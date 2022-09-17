@@ -13,9 +13,8 @@ type Prompt interface {
 	Prompt(label string, dfault string) string
 }
 
-// Prompter is an empty struct
-type Prompter struct {
-}
+// Prompter is an empty struct used to interface promptui
+type Prompter struct{}
 
 // Select is used to select from the prompt
 func (receiver Prompter) Select(label string, toSelect []string, searcher func(input string, index int) bool) (int, string) {

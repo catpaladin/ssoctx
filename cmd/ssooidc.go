@@ -39,20 +39,6 @@ func (ati ClientInformation) IsExpired() bool {
 	return false
 }
 
-// Timer is an interface on the time package
-type Timer interface {
-	Now() time.Time
-}
-
-// Time is an empty struct
-type Time struct {
-}
-
-// Now is used to return current time
-func (i Time) Now() time.Time {
-	return time.Now()
-}
-
 // OIDCInformation contains common info for sso oidc
 type OIDCInformation struct {
 	Client *ssooidc.Client
@@ -68,7 +54,7 @@ func (o OIDCInformation) ProcessClientInformation() (ClientInformation, error) {
 	if err != nil || clientInformation.StartUrl != o.URL {
 		var clientInfoPointer *ClientInformation
 		clientInfoPointer = o.registerClient()
-		clientInfoPointer = retrieveToken(o.Client, Time{}, clientInfoPointer)
+		clientInfoPointer = retrieveToken(o.Client, clientInfoPointer)
 		WriteStructToFile(clientInfoPointer, ClientInfoFileDestination())
 		clientInformation = *clientInfoPointer
 	} else if clientInformation.IsExpired() {
@@ -86,7 +72,7 @@ func (o OIDCInformation) handleOutdatedAccessToken(clientInformation ClientInfor
 
 	clientInformation.DeviceCode = *deviceAuth.DeviceCode
 	var clientInfoPointer *ClientInformation
-	clientInfoPointer = retrieveToken(o.Client, Time{}, &clientInformation)
+	clientInfoPointer = retrieveToken(o.Client, &clientInformation)
 	WriteStructToFile(clientInfoPointer, ClientInfoFileDestination())
 	return *clientInfoPointer
 }
@@ -127,14 +113,13 @@ func (o OIDCInformation) startDeviceAuthorization(rco *ssooidc.RegisterClientOut
 	return *output, nil
 }
 
+// open browser for supported runtimes
 func openUrlInBrowser(url string) {
 	var err error
 
 	switch runtime.GOOS {
 	case "linux":
 		err = exec.Command("xdg-open", url).Start()
-	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
 	case "darwin":
 		err = exec.Command("open", url).Start()
 	default:
@@ -146,6 +131,7 @@ func openUrlInBrowser(url string) {
 
 }
 
+// used to create a CreateTokenInput
 func generateCreateTokenInput(clientInformation *ClientInformation) ssooidc.CreateTokenInput {
 	gtp := grantType
 	return ssooidc.CreateTokenInput{
@@ -156,7 +142,9 @@ func generateCreateTokenInput(clientInformation *ClientInformation) ssooidc.Crea
 	}
 }
 
-func retrieveToken(client *ssooidc.Client, timer Timer, info *ClientInformation) *ClientInformation {
+// retrieveToken is used to create the access token from the sso session
+// this is obtained after auth in the browser.
+func retrieveToken(client *ssooidc.Client, info *ClientInformation) *ClientInformation {
 	input := generateCreateTokenInput(info)
 	// need loop to prevent errors while waiting on auth through browser
 	for {
@@ -174,7 +162,8 @@ func retrieveToken(client *ssooidc.Client, timer Timer, info *ClientInformation)
 			}
 		}
 		info.AccessToken = *cto.AccessToken
-		info.AccessTokenExpiresAt = timer.Now().Add(time.Hour*8 - time.Minute*5)
+		info.AccessTokenExpiresAt = time.Now().Add(time.Hour * 8)
+		//info.AccessTokenExpiresAt = timer.Now().Add(time.Hour*8 - time.Minute*5)
 		return info
 	}
 }

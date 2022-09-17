@@ -1,6 +1,5 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -36,7 +35,7 @@ var (
 		Use:   "config",
 		Short: "Handles configuration",
 		Long: `Handles configuration. Config location defaults to
-		${HOME}/.aws/aws-sso-util-config.yaml`,
+		${HOME}/.config/aws-sso-util/config.yaml`,
 	}
 
 	generateCmd = &cobra.Command{
@@ -75,7 +74,8 @@ var (
 	assumeCmd = &cobra.Command{
 		Use:   "assume",
 		Short: "Assume directly into an account and SSO role",
-		Long:  "Assume directly into an account and SSO role",
+		Long: `Assume directly into an account and SSO role.
+		This is used by the aws default profile.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			conf := ReadConfig(ConfigFilePath())
 			startURL = conf.StartURL
@@ -88,7 +88,7 @@ var (
 	loginCmd = &cobra.Command{
 		Use:   "login",
 		Short: "Login to AWS SSO",
-		Long:  "Login to AWS SSO by retrieving short-lived credentials",
+		Long:  "Login to AWS SSO by retrieving short-lived credentials.",
 		Run: func(cmd *cobra.Command, args []string) {
 			conf := ReadConfig(ConfigFilePath())
 			startURL = conf.StartURL
@@ -100,10 +100,7 @@ var (
 				Client: oidcClient,
 				URL:    startURL,
 			}
-			clientInformation, err := oidcInformation.ProcessClientInformation()
-			if err != nil {
-				log.Fatalf("Encountered error attempting to ProcessClientInformation: %v", err)
-			}
+			clientInformation, _ := oidcInformation.ProcessClientInformation()
 
 			accountInfo := RetrieveAccountInfo(ssoClient, clientInformation, promptSelector)
 			roleInfo := RetrieveRoleInfo(ssoClient, accountInfo, clientInformation, promptSelector)

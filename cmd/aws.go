@@ -73,7 +73,7 @@ func RetrieveRoleInfo(client *sso.Client, accountInfo *types.AccountInfo, client
 		rolesToSelect = append(rolesToSelect, linePrefix+strconv.Itoa(i)+" "+*info.RoleName)
 	}
 
-	label := "Select your role - Note: fuzzy search supported."
+	label := "Select your role"
 	indexChoice, _ := selector.Select(label, rolesToSelect, fuzzySearchWithPrefixAnchor(rolesToSelect, linePrefix))
 	roleInfo := roles.RoleList[indexChoice]
 	return &roleInfo
@@ -94,7 +94,7 @@ func RetrieveAccountInfo(client *sso.Client, clientInformation ClientInformation
 		accountsToSelect = append(accountsToSelect, linePrefix+strconv.Itoa(i)+" "+*info.AccountName+" "+*info.AccountId)
 	}
 
-	label := "Select your account - Note: fuzzy search supported."
+	label := "Select your account"
 	indexChoice, _ := selector.Select(label, accountsToSelect, fuzzySearchWithPrefixAnchor(accountsToSelect, linePrefix))
 
 	fmt.Println()
