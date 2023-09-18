@@ -1,0 +1,66 @@
+package prompt
+
+import (
+	"log"
+	"strings"
+
+	"github.com/lithammer/fuzzysearch/fuzzy"
+	"github.com/manifoldco/promptui"
+)
+
+// Prompt is used to interface with promptui
+type Prompt interface {
+	Select(label string, toSelect []string, searcher func(input string, index int) bool) (index int, value string)
+	Prompt(label string, dfault string) string
+}
+
+// Prompter is an empty struct used to interface promptui
+type Prompter struct{}
+
+// Select is used to select from the prompt
+func (receiver Prompter) Select(label string, toSelect []string, searcher func(input string, index int) bool) (int, string) {
+	prompt := promptui.Select{
+		Label:             label,
+		Items:             toSelect,
+		Size:              20,
+		Searcher:          searcher,
+		StartInSearchMode: true,
+	}
+	index, value, err := prompt.Run()
+	if err != nil {
+		log.Fatalf("Something went wrong: %q", err)
+	}
+	return index, value
+}
+
+// Prompt is used to pop open a selectable prompt
+func (receiver Prompter) Prompt(label string, dfault string) string {
+	prompt := promptui.Prompt{
+		Label:     label,
+		Default:   dfault,
+		AllowEdit: false,
+	}
+	val, err := prompt.Run()
+	if err != nil {
+		log.Fatalf("Something went wrong: %q", err)
+	}
+	return val
+}
+
+func fuzzySearchWithPrefixAnchor(itemsToSelect []string, linePrefix string) func(input string, index int) bool {
+	return func(input string, index int) bool {
+		role := itemsToSelect[index]
+
+		if strings.HasPrefix(input, linePrefix) {
+			if strings.HasPrefix(role, input) {
+				return true
+			}
+			return false
+		}
+
+		if fuzzy.MatchFold(input, role) {
+			return true
+		}
+		return false
+	}
+}

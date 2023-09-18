@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"aws-sso-util/internal/aws"
+	"aws-sso-util/internal/file"
 	"encoding/json"
 	"log"
 	"os"
@@ -18,10 +20,10 @@ var (
 		Long: `Assume directly into an account and SSO role.
 		This is used by the aws default profile.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			conf := ReadConfig(ConfigFilePath())
+			conf := file.ReadConfig(file.ConfigFilePath())
 			startURL = conf.StartURL
 			region = conf.Region
-			oidcClient, ssoClient := InitClients(region)
+			oidcClient, ssoClient := aws.CreateClients(ctx, region)
 			AssumeDirectly(oidcClient, ssoClient)
 		},
 	}
@@ -42,31 +44,34 @@ func init() {
 // AssumeDirectly is used to assume sso role directly.
 // Directly assumes into a certain account and role, bypassing the prompt and interactive selection.
 func AssumeDirectly(oidcClient *ssooidc.Client, ssoClient *sso.Client) {
-	oidcInformation := OIDCInformation{
+	oidc := aws.OIDCClientAPI{
 		Client: oidcClient,
 		URL:    startURL,
 	}
-	clientInformation, _ := oidcInformation.ProcessClientInformation()
+	clientInformation, _ := oidc.ProcessClientInformation(ctx)
 	rci := &sso.GetRoleCredentialsInput{AccountId: &accountID, RoleName: &roleName, AccessToken: &clientInformation.AccessToken}
 	roleCredentials, err := ssoClient.GetRoleCredentials(ctx, rci)
-	check(err)
+	if err != nil {
+		log.Fatalf("Something went wrong: %q", err)
+	}
 
 	if persist {
-		template := ProcessPersistedCredentialsTemplate(roleCredentials, profile)
-		WriteAWSCredentialsFile(template)
+		template := file.ProcessPersistedCredentialsTemplate(roleCredentials, profile)
+		file.WriteAWSCredentialsFile(template)
 
 		log.Printf("Successful retrieved credentials for account: %s", accountID)
 		log.Printf("Assumed role: %s", roleName)
 		log.Printf("Credentials expire at: %s\n", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
 	} else {
-		template := ProcessCredentialProcessTemplate(CredentialProcessInputs{
-			accountID: accountID,
-			roleName:  roleName,
-			profile:   profile,
-			region:    region,
-			startURL:  startURL,
-		})
-		WriteAWSCredentialsFile(template)
+		fileInputs := file.GetCredentialFileInputs(
+			accountID,
+			roleName,
+			profile,
+			region,
+			startURL,
+		)
+		template := file.ProcessCredentialProcessTemplate(fileInputs)
+		file.WriteAWSCredentialsFile(template)
 
 		creds := CredentialProcessOutput{
 			Version:         1,

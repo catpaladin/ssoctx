@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"aws-sso-util/internal/aws"
+	"aws-sso-util/internal/file"
+	"aws-sso-util/internal/prompt"
 	"log"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/spf13/cobra"
 )
 
@@ -15,26 +17,26 @@ var (
 		Short: "Login to AWS SSO",
 		Long:  "Login to AWS SSO by retrieving short-lived credentials.",
 		Run: func(cmd *cobra.Command, args []string) {
-			GetConfigs(&startURL, &region)
-			oidcClient, ssoClient := InitClients(region)
-			promptSelector := Prompter{}
+			file.GetConfigs(&startURL, &region)
+			oidcClient, ssoClient := aws.CreateClients(ctx, region)
+			promptSelector := prompt.Prompter{}
 
-			oidcInformation := OIDCInformation{
+			oidc := aws.OIDCClientAPI{
 				Client: oidcClient,
 				URL:    startURL,
 			}
-			clientInformation, _ := oidcInformation.ProcessClientInformation()
-
-			accountInfo := RetrieveAccountInfo(ssoClient, clientInformation, promptSelector)
-			roleInfo := RetrieveRoleInfo(ssoClient, accountInfo, clientInformation, promptSelector)
-			SaveUsageInformation(accountInfo, roleInfo)
-
-			input := &sso.GetRoleCredentialsInput{
-				AccountId:   accountInfo.AccountId,
-				RoleName:    roleInfo.RoleName,
-				AccessToken: &clientInformation.AccessToken,
+			sso := aws.SSOClientAPI{
+				Client: ssoClient,
 			}
-			roleCredentials, err := ssoClient.GetRoleCredentials(ctx, input)
+
+			clientInformation, _ := oidc.ProcessClientInformation(ctx)
+			accountsOutput := sso.ListAccounts(ctx, clientInformation.AccessToken)
+			accountInfo := prompt.RetrieveAccountInfo(accountsOutput, promptSelector)
+			listRolesOutput := sso.ListAvailableRoles(ctx, *accountInfo.AccountId, clientInformation.AccessToken)
+			roleInfo := prompt.RetrieveRoleInfo(listRolesOutput, promptSelector)
+			file.SaveUsageInformation(accountInfo, roleInfo)
+
+			roleCredentials, err := sso.GetRolesCredentials(ctx, *accountInfo.AccountId, *roleInfo.RoleName, clientInformation.AccessToken)
 			if err != nil {
 				log.Fatalf("Encountered error attempting to GetRoleCredentials: %v", err)
 			}
@@ -47,18 +49,19 @@ var (
 			}
 
 			if persist {
-				template := ProcessPersistedCredentialsTemplate(roleCredentials, profile)
-				WriteAWSCredentialsFile(template)
+				template := file.ProcessPersistedCredentialsTemplate(roleCredentials, profile)
+				file.WriteAWSCredentialsFile(template)
 				log.Printf("Credentails expire at: %s\n", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
 			} else {
-				template := ProcessCredentialProcessTemplate(CredentialProcessInputs{
-					accountID: accountID,
-					roleName:  roleName,
-					profile:   profile,
-					region:    region,
-					startURL:  startURL,
-				})
-				WriteAWSCredentialsFile(template)
+				fileInputs := file.GetCredentialFileInputs(
+					accountID,
+					roleName,
+					profile,
+					region,
+					startURL,
+				)
+				template := file.ProcessCredentialProcessTemplate(fileInputs)
+				file.WriteAWSCredentialsFile(template)
 			}
 		},
 	}
