@@ -8,7 +8,36 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
+	"github.com/spf13/cobra"
 )
+
+var (
+	assumeCmd = &cobra.Command{
+		Use:   "assume",
+		Short: "Assume directly into an account and SSO role",
+		Long: `Assume directly into an account and SSO role.
+		This is used by the aws default profile.`,
+		Run: func(cmd *cobra.Command, args []string) {
+			conf := ReadConfig(ConfigFilePath())
+			startURL = conf.StartURL
+			region = conf.Region
+			oidcClient, ssoClient := InitClients(region)
+			AssumeDirectly(oidcClient, ssoClient)
+		},
+	}
+)
+
+func init() {
+	rootCmd.AddCommand(assumeCmd)
+
+	// flags
+	assumeCmd.Flags().StringVarP(&startURL, "start-url", "u", "", "set / override aws sso url start url")
+	assumeCmd.Flags().StringVarP(&region, "region", "r", "", "set / override aws region")
+	assumeCmd.Flags().StringVarP(&profile, "profile", "p", "default", "the profile name to set in credentials file")
+	assumeCmd.Flags().BoolVarP(&persist, "persist", "", false, "toggle if you want to write short-lived creds to credentials file")
+	assumeCmd.Flags().StringVarP(&roleName, "role-name", "n", "", "role name to assume")
+	assumeCmd.Flags().StringVarP(&accountID, "account-id", "a", "", "account id where the role exists")
+}
 
 // AssumeDirectly is used to assume sso role directly.
 // Directly assumes into a certain account and role, bypassing the prompt and interactive selection.
@@ -30,7 +59,13 @@ func AssumeDirectly(oidcClient *ssooidc.Client, ssoClient *sso.Client) {
 		log.Printf("Assumed role: %s", roleName)
 		log.Printf("Credentials expire at: %s\n", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
 	} else {
-		template := ProcessCredentialProcessTemplate(accountID, roleName, profile, region)
+		template := ProcessCredentialProcessTemplate(CredentialProcessInputs{
+			accountID: accountID,
+			roleName:  roleName,
+			profile:   profile,
+			region:    region,
+			startURL:  startURL,
+		})
 		WriteAWSCredentialsFile(template)
 
 		creds := CredentialProcessOutput{

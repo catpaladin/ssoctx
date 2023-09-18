@@ -23,12 +23,12 @@ const (
 type ClientInformation struct {
 	AccessTokenExpiresAt    time.Time
 	AccessToken             string
-	ClientId                string
+	ClientID                string
 	ClientSecret            string
 	ClientSecretExpiresAt   string
 	DeviceCode              string
-	VerificationUriComplete string
-	StartUrl                string
+	VerificationURIComplete string
+	StartURL                string
 }
 
 // IsExpired is used to tell if AccessToken is expired in client information
@@ -51,7 +51,7 @@ type OIDCInformation struct {
 // When the ClientInformation.AccessToken is expired, it starts retrieving a new AccessToken
 func (o OIDCInformation) ProcessClientInformation() (ClientInformation, error) {
 	clientInformation, err := ReadClientInformation(ClientInfoFileDestination())
-	if err != nil || clientInformation.StartUrl != o.URL {
+	if err != nil || clientInformation.StartURL != o.URL {
 		var clientInfoPointer *ClientInformation
 		clientInfoPointer = o.registerClient()
 		clientInfoPointer = retrieveToken(o.Client, clientInfoPointer)
@@ -66,9 +66,16 @@ func (o OIDCInformation) ProcessClientInformation() (ClientInformation, error) {
 
 // handleOutdatedAccessToken handles client information if AccessToken is expired
 func (o OIDCInformation) handleOutdatedAccessToken(clientInformation ClientInformation) ClientInformation {
-	registerClientOutput := ssooidc.RegisterClientOutput{ClientId: &clientInformation.ClientId, ClientSecret: &clientInformation.ClientSecret}
+	registerClientOutput := ssooidc.RegisterClientOutput{ClientId: &clientInformation.ClientID, ClientSecret: &clientInformation.ClientSecret}
 	deviceAuth, err := o.startDeviceAuthorization(&registerClientOutput)
-	check(err)
+	if err != nil {
+		log.Println("Failed to authorize device. Regenerating AccessToken")
+		var clientInfoPointer *ClientInformation
+		clientInfoPointer = o.registerClient()
+		clientInfoPointer = retrieveToken(o.Client, clientInfoPointer)
+		WriteStructToFile(clientInfoPointer, ClientInfoFileDestination())
+		return *clientInfoPointer
+	}
 
 	clientInformation.DeviceCode = *deviceAuth.DeviceCode
 	var clientInfoPointer *ClientInformation
@@ -90,12 +97,12 @@ func (o OIDCInformation) registerClient() *ClientInformation {
 	check(err)
 
 	return &ClientInformation{
-		ClientId:                *output.ClientId,
+		ClientID:                *output.ClientId,
 		ClientSecret:            *output.ClientSecret,
 		ClientSecretExpiresAt:   strconv.FormatInt(output.ClientSecretExpiresAt, 10),
 		DeviceCode:              *deviceAuth.DeviceCode,
-		VerificationUriComplete: *deviceAuth.VerificationUriComplete,
-		StartUrl:                o.URL,
+		VerificationURIComplete: *deviceAuth.VerificationUriComplete,
+		StartURL:                o.URL,
 	}
 }
 
@@ -109,12 +116,12 @@ func (o OIDCInformation) startDeviceAuthorization(rco *ssooidc.RegisterClientOut
 		return ssooidc.StartDeviceAuthorizationOutput{}, fmt.Errorf("Encountered error at startDeviceAuthorization: %w", err)
 	}
 	log.Println("Please verify your client request: " + *output.VerificationUriComplete)
-	openUrlInBrowser(*output.VerificationUriComplete)
+	openURLInBrowser(*output.VerificationUriComplete)
 	return *output, nil
 }
 
 // open browser for supported runtimes
-func openUrlInBrowser(url string) {
+func openURLInBrowser(url string) {
 	var err error
 
 	switch runtime.GOOS {
@@ -122,6 +129,8 @@ func openUrlInBrowser(url string) {
 		err = exec.Command("xdg-open", url).Start()
 	case "darwin":
 		err = exec.Command("open", url).Start()
+	case "windows":
+		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
 	default:
 		err = fmt.Errorf("could not open %s - unsupported platform. Please open the URL manually", url)
 	}
@@ -135,7 +144,7 @@ func openUrlInBrowser(url string) {
 func generateCreateTokenInput(clientInformation *ClientInformation) ssooidc.CreateTokenInput {
 	gtp := grantType
 	return ssooidc.CreateTokenInput{
-		ClientId:     &clientInformation.ClientId,
+		ClientId:     &clientInformation.ClientID,
 		ClientSecret: &clientInformation.ClientSecret,
 		DeviceCode:   &clientInformation.DeviceCode,
 		GrantType:    &gtp,
@@ -156,9 +165,8 @@ func retrieveToken(client *ssooidc.Client, info *ClientInformation) *ClientInfor
 					log.Println("Waiting on authorization..")
 					time.Sleep(5 * time.Second)
 					continue
-				} else {
-					log.Fatalf("Encountered an error while retrieveToken: %v", err)
 				}
+				log.Fatalf("Encountered an error while retrieveToken: %v", err)
 			}
 		}
 		info.AccessToken = *cto.AccessToken

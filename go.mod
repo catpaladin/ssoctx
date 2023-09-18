@@ -1,6 +1,6 @@
 module aws-sso-util
 
-go 1.18
+go 1.20
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.16.14

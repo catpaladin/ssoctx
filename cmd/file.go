@@ -3,10 +3,12 @@ package cmd
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
-	"path"
+	"path/filepath"
+	"runtime"
 
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/valyala/fasttemplate"
@@ -15,17 +17,46 @@ import (
 // CredentialsFilePath is used to store the credentials path to variable
 var CredentialsFilePath = GetCredentialsFilePath()
 
+// CredentialProcessInputs contains inputs needed to write credentials
+type CredentialProcessInputs struct {
+	accountID string
+	roleName  string
+	profile   string
+	region    string
+	startURL  string
+}
+
+// GetCredentialFileInputs takes inputs and returns a CredentialProcessInputs struct
+func GetCredentialFileInputs(accountID, roleName, profile, region, startURL string) CredentialProcessInputs {
+	return CredentialProcessInputs{
+		accountID: accountID,
+		roleName:  roleName,
+		profile:   profile,
+		region:    region,
+		startURL:  startURL,
+	}
+}
+
 // GetCredentialsFilePath returns the credentials path
 func GetCredentialsFilePath() string {
 	homeDir, err := os.UserHomeDir()
 	check(err)
-	return homeDir + "/.aws/credentials"
+	if runtime.GOOS == "windows" {
+		return fmt.Sprintf("%s\\.aws\\credentials", homeDir)
+	}
+	return fmt.Sprintf("%s/.aws/credentials", homeDir)
 }
 
 // ClientInfoFileDestination returns the path to cached access
 func ClientInfoFileDestination() string {
-	homeDir, _ := os.UserHomeDir()
-	return homeDir + "/.aws/sso/cache/access-token.json"
+	homeDir, err := os.UserHomeDir()
+	check(err)
+	switch runtime.GOOS {
+	case "windows":
+		return fmt.Sprintf("%s\\.aws\\sso\\cache\\access-token.json", homeDir)
+	default:
+		return fmt.Sprintf("%s/.aws/sso/cache/access-token.json", homeDir)
+	}
 }
 
 // ProcessPersistedCredentialsTemplate is used to template the persisted credentials file
@@ -49,7 +80,7 @@ region = us-east-1
 }
 
 // ProcessCredentialProcessTemplate is used to template the direct assume
-func ProcessCredentialProcessTemplate(accountId string, roleName string, profile string, region string) string {
+func ProcessCredentialProcessTemplate(credentialInputs CredentialProcessInputs) string {
 	template := `[{{profile}}]
 credential_process = aws-sso-util assume -a {{accountId}} -n {{roleName}}
 region = {{region}}
@@ -57,10 +88,10 @@ region = {{region}}
 
 	engine := fasttemplate.New(template, "{{", "}}")
 	filledTemplate := engine.ExecuteString(map[string]interface{}{
-		"profile":   profile,
-		"region":    region,
-		"accountId": accountId,
-		"roleName":  roleName,
+		"profile":   credentialInputs.profile,
+		"region":    credentialInputs.region,
+		"accountId": credentialInputs.accountID,
+		"roleName":  credentialInputs.roleName,
 	})
 	return filledTemplate
 }
@@ -68,7 +99,7 @@ region = {{region}}
 // WriteAWSCredentialsFile is used to write the template to credentials
 func WriteAWSCredentialsFile(template string) {
 	if !isFileOrFolderExisting(CredentialsFilePath) {
-		dir := path.Dir(CredentialsFilePath)
+		dir := filepath.Dir(CredentialsFilePath)
 		err := os.MkdirAll(dir, 0755)
 		check(err)
 		f, err := os.OpenFile(CredentialsFilePath, os.O_CREATE, 0644)
@@ -93,7 +124,7 @@ func ReadClientInformation(file string) (ClientInformation, error) {
 
 // WriteStructToFile is used to write the payload to file
 func WriteStructToFile(payload interface{}, dest string) {
-	targetDir := path.Dir(dest)
+	targetDir := filepath.Dir(dest)
 	if !isFileOrFolderExisting(targetDir) {
 		err := os.MkdirAll(targetDir, 0700)
 		check(err)
@@ -110,8 +141,7 @@ func isFileOrFolderExisting(target string) bool {
 		return true
 	} else if os.IsNotExist(err) {
 		return false
-	} else {
-		log.Panicf("Could not determine if file or folder %q exists or not. Exiting.", target)
-		return false
 	}
+	log.Panicf("Could not determine if file or folder %q exists or not. Exiting.", target)
+	return false
 }

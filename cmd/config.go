@@ -5,16 +5,56 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"path"
+	"path/filepath"
+	"runtime"
 
 	"github.com/lithammer/fuzzysearch/fuzzy"
+	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
 
 const (
 	// UserConfigFilePath is the file path under User's config path
-	UserConfigFilePath string = "/aws-sso-util/config.yml"
+	UserConfigFilePath string = "/aws-sso-util"
+	// WindowsConfigPath is where windows will store User's config path
+	WindowsConfigPath string = "\\aws-sso-util"
 )
+
+var (
+	configCmd = &cobra.Command{
+		Use:   "config",
+		Short: "Handles configuration",
+		Long: `Handles configuration. Config location defaults to
+		${HOME}/.config/aws-sso-util/config.yaml`,
+	}
+
+	generateCmd = &cobra.Command{
+		Use:   "generate",
+		Short: "Generate a config file",
+		Long: `Generate a config file. All available properities are interactively prompted.
+		Overrides the existing config.`,
+		Run: func(cmd *cobra.Command, args []string) {
+			GenerateConfigAction()
+		},
+	}
+
+	editCmd = &cobra.Command{
+		Use:   "edit",
+		Short: "Edit the config file",
+		Long: `Edit the config file. All available properities are interactively prompted.
+		Overrides the existing config.`,
+		Run: func(cmd *cobra.Command, args []string) {
+			EditConfigAction()
+		},
+	}
+)
+
+func init() {
+	// subcommands
+	rootCmd.AddCommand(configCmd)
+	configCmd.AddCommand(generateCmd)
+	configCmd.AddCommand(editCmd)
+}
 
 // AppConfig is used to save yaml config
 type AppConfig struct {
@@ -26,7 +66,21 @@ type AppConfig struct {
 func ConfigFilePath() string {
 	configDir, err := os.UserConfigDir()
 	check(err)
-	return configDir + UserConfigFilePath
+	if runtime.GOOS == "windows" {
+		return fmt.Sprintf("%s%s\\config.yml", configDir, WindowsConfigPath)
+	}
+	return fmt.Sprintf("%s%s/config.yml", configDir, UserConfigFilePath)
+}
+
+// GetConfigs reads the config and sets values.
+func GetConfigs(startURL, region *string) {
+	conf := ReadConfig(ConfigFilePath())
+	if len(*startURL) == 0 {
+		*startURL = conf.StartURL
+	}
+	if len(*region) == 0 {
+		*region = conf.Region
+	}
 }
 
 // ReadConfig is used to read the config by filePath
@@ -43,10 +97,10 @@ func ReadConfig(filePath string) *AppConfig {
 // GenerateConfigAction is used to generate a config yaml
 func GenerateConfigAction() error {
 	prompter := Prompter{}
-	startUrl := promptStartURL(prompter, "")
+	startURL := promptStartURL(prompter, "")
 	region := promptRegion(prompter)
 	appConfig := AppConfig{
-		StartURL: startUrl,
+		StartURL: startURL,
 		Region:   region,
 	}
 
@@ -90,7 +144,7 @@ func writeConfig(filePath string, ac AppConfig) error {
 		return fmt.Errorf("Encountered error at writeConfig: %w", err)
 	}
 
-	base := path.Dir(filePath)
+	base := filepath.Dir(filePath)
 	if err = os.MkdirAll(base, 0755); err != nil {
 		return fmt.Errorf("Encountered error at writeConfig: %w", err)
 	}
