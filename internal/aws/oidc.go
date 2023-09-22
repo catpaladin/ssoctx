@@ -1,3 +1,4 @@
+// Package aws contains all the aws logic
 package aws
 
 import (
@@ -20,10 +21,25 @@ const (
 	clientName string = "aws-sso-util"
 )
 
+// OIDCClient is used to abstract the client calls for mock testing
+type OIDCClient interface {
+	CreateToken(ctx context.Context, params *ssooidc.CreateTokenInput, optFns ...func(*ssooidc.Options)) (*ssooidc.CreateTokenOutput, error)
+	RegisterClient(ctx context.Context, params *ssooidc.RegisterClientInput, optFns ...func(*ssooidc.Options)) (*ssooidc.RegisterClientOutput, error)
+	StartDeviceAuthorization(ctx context.Context, params *ssooidc.StartDeviceAuthorizationInput, optFns ...func(*ssooidc.Options)) (*ssooidc.StartDeviceAuthorizationOutput, error)
+}
+
 // OIDCClientAPI contains common info for sso oidc
 type OIDCClientAPI struct {
-	Client *ssooidc.Client
-	URL    string
+	client OIDCClient
+	url    string
+}
+
+// NewOIDCClient is used to implement the interface
+func NewOIDCClient(c OIDCClient, url string) *OIDCClientAPI {
+	return &OIDCClientAPI{
+		client: c,
+		url:    url,
+	}
 }
 
 // ProcessClientInformation tries to read available ClientInformation.
@@ -32,7 +48,7 @@ type OIDCClientAPI struct {
 // When the ClientInformation.AccessToken is expired, it starts retrieving a new AccessToken
 func (o OIDCClientAPI) ProcessClientInformation(ctx context.Context) (client.ClientInformation, error) {
 	clientInformation, err := file.ReadClientInformation(file.ClientInfoFileDestination())
-	if err != nil || clientInformation.StartURL != o.URL {
+	if err != nil || clientInformation.StartURL != o.url {
 		var clientInfoPointer *client.ClientInformation
 		clientInfoPointer = o.registerClient(ctx)
 		clientInfoPointer = o.retrieveToken(ctx, clientInfoPointer)
@@ -71,7 +87,7 @@ func (o OIDCClientAPI) registerClient(ctx context.Context) *client.ClientInforma
 	ct := clientType
 
 	input := ssooidc.RegisterClientInput{ClientName: &cn, ClientType: &ct}
-	output, err := o.Client.RegisterClient(ctx, &input)
+	output, err := o.client.RegisterClient(ctx, &input)
 	if err != nil {
 		log.Fatalf("Something went wrong: %q", err)
 	}
@@ -87,16 +103,16 @@ func (o OIDCClientAPI) registerClient(ctx context.Context) *client.ClientInforma
 		ClientSecretExpiresAt:   strconv.FormatInt(output.ClientSecretExpiresAt, 10),
 		DeviceCode:              *deviceAuth.DeviceCode,
 		VerificationURIComplete: *deviceAuth.VerificationUriComplete,
-		StartURL:                o.URL,
+		StartURL:                o.url,
 	}
 }
 
 // startDeviceAuthorization is used to start device auth and open browser
 func (o OIDCClientAPI) startDeviceAuthorization(ctx context.Context, rco *ssooidc.RegisterClientOutput) (ssooidc.StartDeviceAuthorizationOutput, error) {
-	output, err := o.Client.StartDeviceAuthorization(ctx, &ssooidc.StartDeviceAuthorizationInput{
+	output, err := o.client.StartDeviceAuthorization(ctx, &ssooidc.StartDeviceAuthorizationInput{
 		ClientId:     rco.ClientId,
 		ClientSecret: rco.ClientSecret,
-		StartUrl:     &o.URL,
+		StartUrl:     &o.url,
 	})
 	if err != nil {
 		return ssooidc.StartDeviceAuthorizationOutput{}, fmt.Errorf("Encountered error at startDeviceAuthorization: %w", err)
@@ -112,7 +128,7 @@ func (o OIDCClientAPI) retrieveToken(ctx context.Context, info *client.ClientInf
 	input := generateCreateTokenInput(info)
 	// need loop to prevent errors while waiting on auth through browser
 	for {
-		cto, err := o.Client.CreateToken(ctx, &input)
+		cto, err := o.client.CreateToken(ctx, &input)
 		if err != nil {
 			var ae smithy.APIError
 			if errors.As(err, &ae) {

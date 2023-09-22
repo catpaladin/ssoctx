@@ -1,3 +1,4 @@
+// Package aws contains all the aws logic
 package aws
 
 import (

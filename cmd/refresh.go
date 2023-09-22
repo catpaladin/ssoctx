@@ -34,13 +34,8 @@ func init() {
 
 // RefreshCredentials is used to refresh credentials
 func RefreshCredentials(oidcClient *ssooidc.Client, ssoClient *sso.Client) {
-	oidc := aws.OIDCClientAPI{
-		Client: oidcClient,
-		URL:    startURL,
-	}
-	sso := aws.SSOClientAPI{
-		Client: ssoClient,
-	}
+	oidc := aws.NewOIDCClient(oidcClient, startURL)
+	sso := aws.NewSSOClient(ssoClient)
 
 	clientInformation, err := file.ReadClientInformation(file.ClientInfoFileDestination())
 	if err != nil || clientInformation.StartURL != startURL {

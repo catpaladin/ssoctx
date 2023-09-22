@@ -21,13 +21,8 @@ var (
 			oidcClient, ssoClient := aws.CreateClients(ctx, region)
 			promptSelector := prompt.Prompter{}
 
-			oidc := aws.OIDCClientAPI{
-				Client: oidcClient,
-				URL:    startURL,
-			}
-			sso := aws.SSOClientAPI{
-				Client: ssoClient,
-			}
+			oidc := aws.NewOIDCClient(oidcClient, startURL)
+			sso := aws.NewSSOClient(ssoClient)
 
 			clientInformation, _ := oidc.ProcessClientInformation(ctx)
 			accountsOutput := sso.ListAccounts(ctx, clientInformation.AccessToken)

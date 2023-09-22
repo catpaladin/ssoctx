@@ -44,10 +44,7 @@ func init() {
 // AssumeDirectly is used to assume sso role directly.
 // Directly assumes into a certain account and role, bypassing the prompt and interactive selection.
 func AssumeDirectly(oidcClient *ssooidc.Client, ssoClient *sso.Client) {
-	oidc := aws.OIDCClientAPI{
-		Client: oidcClient,
-		URL:    startURL,
-	}
+	oidc := aws.NewOIDCClient(oidcClient, startURL)
 	clientInformation, _ := oidc.ProcessClientInformation(ctx)
 	rci := &sso.GetRoleCredentialsInput{AccountId: &accountID, RoleName: &roleName, AccessToken: &clientInformation.AccessToken}
 	roleCredentials, err := ssoClient.GetRoleCredentials(ctx, rci)
