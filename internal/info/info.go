@@ -1,4 +1,5 @@
-package client
+// Package info contains client info
+package info
 
 import "time"
 

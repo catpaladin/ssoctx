@@ -2,8 +2,8 @@
 package aws
 
 import (
-	"aws-sso-util/internal/client"
 	"aws-sso-util/internal/file"
+	"aws-sso-util/internal/info"
 	"context"
 	"errors"
 	"fmt"
@@ -46,10 +46,10 @@ func NewOIDCClient(c OIDCClient, url string) *OIDCClientAPI {
 // If no ClientInformation is available it retrieves and creates new one and writes this information to disk
 // If the start url is overridden via flag and differs from the previous one, a new Client is registered for the given start url.
 // When the ClientInformation.AccessToken is expired, it starts retrieving a new AccessToken
-func (o OIDCClientAPI) ProcessClientInformation(ctx context.Context) (client.ClientInformation, error) {
+func (o *OIDCClientAPI) ProcessClientInformation(ctx context.Context) (info.ClientInformation, error) {
 	clientInformation, err := file.ReadClientInformation(file.ClientInfoFileDestination())
 	if err != nil || clientInformation.StartURL != o.url {
-		var clientInfoPointer *client.ClientInformation
+		var clientInfoPointer *info.ClientInformation
 		clientInfoPointer = o.registerClient(ctx)
 		clientInfoPointer = o.retrieveToken(ctx, clientInfoPointer)
 		file.WriteStructToFile(clientInfoPointer, file.ClientInfoFileDestination())
@@ -62,12 +62,12 @@ func (o OIDCClientAPI) ProcessClientInformation(ctx context.Context) (client.Cli
 }
 
 // handleOutdatedAccessToken handles client information if AccessToken is expired
-func (o OIDCClientAPI) handleOutdatedAccessToken(ctx context.Context, clientInformation client.ClientInformation) client.ClientInformation {
+func (o *OIDCClientAPI) handleOutdatedAccessToken(ctx context.Context, clientInformation info.ClientInformation) info.ClientInformation {
 	registerClientOutput := ssooidc.RegisterClientOutput{ClientId: &clientInformation.ClientID, ClientSecret: &clientInformation.ClientSecret}
 	deviceAuth, err := o.startDeviceAuthorization(ctx, &registerClientOutput)
 	if err != nil {
 		log.Println("Failed to authorize device. Regenerating AccessToken")
-		var clientInfoPointer *client.ClientInformation
+		var clientInfoPointer *info.ClientInformation
 		clientInfoPointer = o.registerClient(ctx)
 		clientInfoPointer = o.retrieveToken(ctx, clientInfoPointer)
 		file.WriteStructToFile(clientInfoPointer, file.ClientInfoFileDestination())
@@ -75,14 +75,14 @@ func (o OIDCClientAPI) handleOutdatedAccessToken(ctx context.Context, clientInfo
 	}
 
 	clientInformation.DeviceCode = *deviceAuth.DeviceCode
-	var clientInfoPointer *client.ClientInformation
+	var clientInfoPointer *info.ClientInformation
 	clientInfoPointer = o.retrieveToken(ctx, &clientInformation)
 	file.WriteStructToFile(clientInfoPointer, file.ClientInfoFileDestination())
 	return *clientInfoPointer
 }
 
 // RegisterClient is used to start device auth
-func (o OIDCClientAPI) registerClient(ctx context.Context) *client.ClientInformation {
+func (o *OIDCClientAPI) registerClient(ctx context.Context) *info.ClientInformation {
 	cn := clientName
 	ct := clientType
 
@@ -97,7 +97,7 @@ func (o OIDCClientAPI) registerClient(ctx context.Context) *client.ClientInforma
 		log.Fatalf("Something went wrong: %q", err)
 	}
 
-	return &client.ClientInformation{
+	return &info.ClientInformation{
 		ClientID:                *output.ClientId,
 		ClientSecret:            *output.ClientSecret,
 		ClientSecretExpiresAt:   strconv.FormatInt(output.ClientSecretExpiresAt, 10),
@@ -108,7 +108,7 @@ func (o OIDCClientAPI) registerClient(ctx context.Context) *client.ClientInforma
 }
 
 // startDeviceAuthorization is used to start device auth and open browser
-func (o OIDCClientAPI) startDeviceAuthorization(ctx context.Context, rco *ssooidc.RegisterClientOutput) (ssooidc.StartDeviceAuthorizationOutput, error) {
+func (o *OIDCClientAPI) startDeviceAuthorization(ctx context.Context, rco *ssooidc.RegisterClientOutput) (ssooidc.StartDeviceAuthorizationOutput, error) {
 	output, err := o.client.StartDeviceAuthorization(ctx, &ssooidc.StartDeviceAuthorizationInput{
 		ClientId:     rco.ClientId,
 		ClientSecret: rco.ClientSecret,
@@ -124,7 +124,7 @@ func (o OIDCClientAPI) startDeviceAuthorization(ctx context.Context, rco *ssooid
 
 // retrieveToken is used to create the access token from the sso session
 // this is obtained after auth in the browser.
-func (o OIDCClientAPI) retrieveToken(ctx context.Context, info *client.ClientInformation) *client.ClientInformation {
+func (o *OIDCClientAPI) retrieveToken(ctx context.Context, info *info.ClientInformation) *info.ClientInformation {
 	input := generateCreateTokenInput(info)
 	// need loop to prevent errors while waiting on auth through browser
 	for {
@@ -148,7 +148,7 @@ func (o OIDCClientAPI) retrieveToken(ctx context.Context, info *client.ClientInf
 }
 
 // generateCreateTokenInput is used to create a CreateTokenInput
-func generateCreateTokenInput(clientInformation *client.ClientInformation) ssooidc.CreateTokenInput {
+func generateCreateTokenInput(clientInformation *info.ClientInformation) ssooidc.CreateTokenInput {
 	gtp := grantType
 	return ssooidc.CreateTokenInput{
 		ClientId:     &clientInformation.ClientID,

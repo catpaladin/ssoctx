@@ -1,7 +1,7 @@
 package file
 
 import (
-	"aws-sso-util/internal/client"
+	"aws-sso-util/internal/info"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -121,9 +121,9 @@ func WriteAWSCredentialsFile(template string) {
 }
 
 // ReadClientInformation is used to read file for ClientInformation
-func ReadClientInformation(file string) (client.ClientInformation, error) {
+func ReadClientInformation(file string) (info.ClientInformation, error) {
 	if isFileOrFolderExisting(file) {
-		clientInformation := client.ClientInformation{}
+		clientInformation := info.ClientInformation{}
 		content, _ := os.ReadFile(ClientInfoFileDestination())
 		err := json.Unmarshal(content, &clientInformation)
 		if err != nil {
@@ -131,7 +131,7 @@ func ReadClientInformation(file string) (client.ClientInformation, error) {
 		}
 		return clientInformation, nil
 	}
-	return client.ClientInformation{}, errors.New("no ClientInformation exist")
+	return info.ClientInformation{}, errors.New("no ClientInformation exist")
 }
 
 // WriteStructToFile is used to write the payload to file

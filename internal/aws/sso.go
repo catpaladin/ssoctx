@@ -3,7 +3,6 @@ package aws
 
 import (
 	"context"
-	"log"
 
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 )
@@ -26,7 +25,7 @@ func NewSSOClient(s SSOClient) *Client {
 }
 
 // ListAvailableRoles is used to return a ListAccountRolesOutput
-func (c Client) ListAvailableRoles(ctx context.Context, accountID, accessToken string) *sso.ListAccountRolesOutput {
+func (c *Client) ListAvailableRoles(ctx context.Context, accountID, accessToken string) *sso.ListAccountRolesOutput {
 	lari := &sso.ListAccountRolesInput{AccountId: &accountID, AccessToken: &accessToken}
 	roles, _ := c.client.ListAccountRoles(ctx, lari)
 
@@ -34,7 +33,7 @@ func (c Client) ListAvailableRoles(ctx context.Context, accountID, accessToken s
 }
 
 // ListAccounts is used to return the ListAccountsOutput
-func (c Client) ListAccounts(ctx context.Context, accessToken string) *sso.ListAccountsOutput {
+func (c *Client) ListAccounts(ctx context.Context, accessToken string) *sso.ListAccountsOutput {
 	var maxSize int32 = 500
 	lai := sso.ListAccountsInput{AccessToken: &accessToken, MaxResults: &maxSize}
 	accounts, _ := c.client.ListAccounts(ctx, &lai)
@@ -43,11 +42,11 @@ func (c Client) ListAccounts(ctx context.Context, accessToken string) *sso.ListA
 }
 
 // GetRolesCredentials is used
-func (c Client) GetRolesCredentials(ctx context.Context, accountID, roleName, accessToken string) (*sso.GetRoleCredentialsOutput, error) {
+func (c *Client) GetRolesCredentials(ctx context.Context, accountID, roleName, accessToken string) (*sso.GetRoleCredentialsOutput, error) {
 	rci := &sso.GetRoleCredentialsInput{AccountId: &accountID, RoleName: &roleName, AccessToken: &accessToken}
 	roleCredentials, err := c.client.GetRoleCredentials(ctx, rci)
 	if err != nil {
-		log.Fatalf("Something went wrong: %q", err)
+		return &sso.GetRoleCredentialsOutput{}, err
 	}
 	return roleCredentials, nil
 }
