@@ -6,11 +6,11 @@ require_relative "lib/custom_download_strategy"
 class AwsSsoUtil < Formula
   desc ""
   homepage ""
-  version "0.1.0"
+  version "0.2.0"
 
   on_macos do
-    url "https://github.com/catpaladin/aws-sso-util/releases/download/v0.1.0/aws-sso-util_0.1.0_darwin_all.tar.gz", using: GitHubPrivateRepositoryReleaseDownloadStrategy
-    sha256 "cef610a9c91d45dca2e89873efff0f8795d8c3239872b9657f7302d289277e1a"
+    url "https://github.com/catpaladin/aws-sso-util/releases/download/v0.2.0/aws-sso-util_0.2.0_darwin_all.tar.gz", using: GitHubPrivateRepositoryReleaseDownloadStrategy
+    sha256 "d3429b729da82705bc23a18c646ce8875548a8496ac421749ef55c7bc311dcb1"
 
     def install
       bin.install "aws-sso-util"
@@ -19,16 +19,16 @@ class AwsSsoUtil < Formula
 
   on_linux do
     if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
-      url "https://github.com/catpaladin/aws-sso-util/releases/download/v0.1.0/aws-sso-util_0.1.0_linux_arm64.tar.gz", using: GitHubPrivateRepositoryReleaseDownloadStrategy
-      sha256 "0529fe08a3b8fd20a17145a5ceef7a3d1434b4810cb9cc0133d62f1808334799"
+      url "https://github.com/catpaladin/aws-sso-util/releases/download/v0.2.0/aws-sso-util_0.2.0_linux_arm64.tar.gz", using: GitHubPrivateRepositoryReleaseDownloadStrategy
+      sha256 "817dea8da38906681e851b96eef70b2de5b850d330f47ba11963fae1143b02f7"
 
       def install
         bin.install "aws-sso-util"
       end
     end
     if Hardware::CPU.intel?
-      url "https://github.com/catpaladin/aws-sso-util/releases/download/v0.1.0/aws-sso-util_0.1.0_linux_amd64.tar.gz", using: GitHubPrivateRepositoryReleaseDownloadStrategy
-      sha256 "1ac7314b9b2f0d0879041dff48595c8293cef80fd2385e2fe7ef8087e093b8c4"
+      url "https://github.com/catpaladin/aws-sso-util/releases/download/v0.2.0/aws-sso-util_0.2.0_linux_amd64.tar.gz", using: GitHubPrivateRepositoryReleaseDownloadStrategy
+      sha256 "7b518f5200a7a055b4b7507c02b803dfee24bc3ab1d39fb1421493c1d4933799"
 
       def install
         bin.install "aws-sso-util"
