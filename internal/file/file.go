@@ -1,7 +1,7 @@
+// Package file contains needed functionality for config and files
 package file
 
 import (
-	"aws-sso-util/internal/info"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"aws-sso-util/internal/info"
 
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/valyala/fasttemplate"
@@ -104,17 +106,17 @@ region = {{region}}
 func WriteAWSCredentialsFile(template string) {
 	if !isFileOrFolderExisting(CredentialsFilePath) {
 		dir := filepath.Dir(CredentialsFilePath)
-		err := os.MkdirAll(dir, 0755)
+		err := os.MkdirAll(dir, 0o755)
 		if err != nil {
 			log.Fatalf("Something went wrong: %q", err)
 		}
-		f, err := os.OpenFile(CredentialsFilePath, os.O_CREATE, 0644)
+		f, err := os.OpenFile(CredentialsFilePath, os.O_CREATE, 0o644)
 		if err != nil {
 			log.Fatalf("Something went wrong: %q", err)
 		}
 		defer f.Close()
 	}
-	err := os.WriteFile(CredentialsFilePath, []byte(template), 0644)
+	err := os.WriteFile(CredentialsFilePath, []byte(template), 0o644)
 	if err != nil {
 		log.Fatalf("Something went wrong: %q", err)
 	}
@@ -138,7 +140,7 @@ func ReadClientInformation(file string) (info.ClientInformation, error) {
 func WriteStructToFile(payload interface{}, dest string) {
 	targetDir := filepath.Dir(dest)
 	if !isFileOrFolderExisting(targetDir) {
-		err := os.MkdirAll(targetDir, 0700)
+		err := os.MkdirAll(targetDir, 0o700)
 		if err != nil {
 			log.Fatalf("Something went wrong: %q", err)
 		}
@@ -147,7 +149,7 @@ func WriteStructToFile(payload interface{}, dest string) {
 	if err != nil {
 		log.Fatalf("Something went wrong: %q", err)
 	}
-	_ = os.WriteFile(dest, file, 0600)
+	_ = os.WriteFile(dest, file, 0o600)
 }
 
 // isFileOrFolderExisting checks either or not a target file is existing.

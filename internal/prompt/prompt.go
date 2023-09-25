@@ -1,3 +1,4 @@
+// Package prompt contains functionality for terminal prompt and search
 package prompt
 
 import (

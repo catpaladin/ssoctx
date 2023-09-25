@@ -2,14 +2,15 @@
 package aws
 
 import (
-	"aws-sso-util/internal/file"
-	"aws-sso-util/internal/info"
 	"context"
 	"errors"
 	"fmt"
 	"log"
 	"strconv"
 	"time"
+
+	"aws-sso-util/internal/file"
+	"aws-sso-util/internal/info"
 
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	"github.com/aws/smithy-go"
@@ -146,7 +147,7 @@ func (o *OIDCClientAPI) retrieveToken(ctx context.Context, info *info.ClientInfo
 		}
 		info.AccessToken = *cto.AccessToken
 		info.AccessTokenExpiresAt = time.Now().Add(time.Hour * 8)
-		//info.AccessTokenExpiresAt = timer.Now().Add(time.Hour*8 - time.Minute*5)
+		// info.AccessTokenExpiresAt = timer.Now().Add(time.Hour*8 - time.Minute*5)
 		return info
 	}
 }

@@ -1,3 +1,4 @@
+// Package file contains needed functionality for config and files
 package file
 
 import (

@@ -2,7 +2,6 @@
 package aws
 
 import (
-	"aws-sso-util/internal/info"
 	"context"
 	"errors"
 	"fmt"
@@ -10,16 +9,18 @@ import (
 	"reflect"
 	"testing"
 
+	"aws-sso-util/internal/info"
+
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 )
 
 var (
-	accessToken      string = "1010101010101010101"
-	refreshToken     string = "eyyyyEARRRRRRMO"
-	code             string = "ABCE-F1JK"
-	mockClientID     string = "111111111AAAAAAAAAA"
-	mockClientSecret string = "SuperSecretDontLook"
-	uriComplete      string = fmt.Sprintf("https://device.sso.us-west-2.amazonaws.com/?user_code=%s", code)
+	accessToken      = "1010101010101010101"
+	refreshToken     = "eyyyyEARRRRRRMO"
+	code             = "ABCE-F1JK"
+	mockClientID     = "111111111AAAAAAAAAA"
+	mockClientSecret = "SuperSecretDontLook"
+	uriComplete      = fmt.Sprintf("https://device.sso.us-west-2.amazonaws.com/?user_code=%s", code)
 )
 
 type mockOIDCClient struct{}
@@ -58,7 +59,7 @@ func (m *mockOIDCClient) RegisterClient(ctx context.Context, params *ssooidc.Reg
 
 	// this is only here to make the linter happy
 	if len(optFns) > 0 {
-		fmt.Println(optFns)
+		fmt.Println(optFns, params)
 	}
 	return &ssooidc.RegisterClientOutput{
 		ClientId:     &mockClientID,
@@ -90,7 +91,11 @@ func (m *mockOIDCClient) StartDeviceAuthorization(ctx context.Context, params *s
 }
 
 func fakeExecCmd(command string, args ...string) *exec.Cmd {
-	return exec.Command("echo", "test")
+	var argsString string
+	for _, arg := range args {
+		argsString = argsString + arg
+	}
+	return exec.Command("echo", fmt.Sprintf("test: %s %s", command, argsString))
 }
 
 func TestOIDCClientAPI_startDeviceAuthorization(t *testing.T) {

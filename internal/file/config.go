@@ -1,12 +1,14 @@
+// Package file contains needed functionality for config and files
 package file
 
 import (
-	"aws-sso-util/internal/prompt"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"aws-sso-util/internal/prompt"
 
 	"gopkg.in/yaml.v2"
 )
@@ -91,7 +93,6 @@ func EditConfigAction() error {
 		return fmt.Errorf("Encountered error at EditConfigAction: %w", err)
 	}
 	return nil
-
 }
 
 func writeConfig(filePath string, ac AppConfig) error {
@@ -101,11 +102,11 @@ func writeConfig(filePath string, ac AppConfig) error {
 	}
 
 	base := filepath.Dir(filePath)
-	if err = os.MkdirAll(base, 0755); err != nil {
+	if err = os.MkdirAll(base, 0o755); err != nil {
 		return fmt.Errorf("Encountered error at writeConfig: %w", err)
 	}
 
-	if err = os.WriteFile(filePath, bytes, 0755); err != nil {
+	if err = os.WriteFile(filePath, bytes, 0o755); err != nil {
 		return fmt.Errorf("Encountered error at writeConfig: %w", err)
 	}
 

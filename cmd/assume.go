@@ -1,33 +1,32 @@
 package cmd
 
 import (
-	"aws-sso-util/internal/aws"
-	"aws-sso-util/internal/file"
 	"encoding/json"
 	"log"
 	"os"
 	"time"
+
+	"aws-sso-util/internal/aws"
+	"aws-sso-util/internal/file"
 
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	"github.com/spf13/cobra"
 )
 
-var (
-	assumeCmd = &cobra.Command{
-		Use:   "assume",
-		Short: "Assume directly into an account and SSO role",
-		Long: `Assume directly into an account and SSO role.
+var assumeCmd = &cobra.Command{
+	Use:   "assume",
+	Short: "Assume directly into an account and SSO role",
+	Long: `Assume directly into an account and SSO role.
 		This is used by the aws default profile.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			conf := file.ReadConfig(file.ConfigFilePath())
-			startURL = conf.StartURL
-			region = conf.Region
-			oidcClient, ssoClient := CreateClients(ctx, region)
-			AssumeDirectly(oidcClient, ssoClient)
-		},
-	}
-)
+	Run: func(cmd *cobra.Command, args []string) {
+		conf := file.ReadConfig(file.ConfigFilePath())
+		startURL = conf.StartURL
+		region = conf.Region
+		oidcClient, ssoClient := CreateClients(ctx, region)
+		AssumeDirectly(oidcClient, ssoClient)
+	},
+}
 
 func init() {
 	rootCmd.AddCommand(assumeCmd)
@@ -80,7 +79,6 @@ func AssumeDirectly(oidcClient *ssooidc.Client, ssoClient *sso.Client) {
 		bytes, _ := json.Marshal(creds)
 		os.Stdout.Write(bytes)
 	}
-
 }
 
 // CredentialProcessOutput is used to marshal results from GetRoleCredentials

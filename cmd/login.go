@@ -1,11 +1,12 @@
 package cmd
 
 import (
+	"log"
+	"time"
+
 	"aws-sso-util/internal/aws"
 	"aws-sso-util/internal/file"
 	"aws-sso-util/internal/prompt"
-	"log"
-	"time"
 
 	"github.com/spf13/cobra"
 )

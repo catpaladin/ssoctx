@@ -1,32 +1,31 @@
 package cmd
 
 import (
-	"aws-sso-util/internal/aws"
-	"aws-sso-util/internal/file"
-	"aws-sso-util/internal/prompt"
 	"log"
 	"strings"
 	"time"
+
+	"aws-sso-util/internal/aws"
+	"aws-sso-util/internal/file"
+	"aws-sso-util/internal/prompt"
 
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	"github.com/spf13/cobra"
 )
 
-var (
-	refreshCmd = &cobra.Command{
-		Use:   "refresh",
-		Short: "Refresh your previously used credentials",
-		Long:  `Refreshes the credentials based on last account and role.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			conf := file.ReadConfig(file.ConfigFilePath())
-			startURL = conf.StartURL
-			region = conf.Region
-			oidcClient, ssoClient := CreateClients(ctx, region)
-			RefreshCredentials(oidcClient, ssoClient)
-		},
-	}
-)
+var refreshCmd = &cobra.Command{
+	Use:   "refresh",
+	Short: "Refresh your previously used credentials",
+	Long:  `Refreshes the credentials based on last account and role.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		conf := file.ReadConfig(file.ConfigFilePath())
+		startURL = conf.StartURL
+		region = conf.Region
+		oidcClient, ssoClient := CreateClients(ctx, region)
+		RefreshCredentials(oidcClient, ssoClient)
+	},
+}
 
 func init() {
 	rootCmd.AddCommand(refreshCmd)
@@ -47,13 +46,21 @@ func RefreshCredentials(oidcClient *ssooidc.Client, ssoClient *sso.Client) {
 	var roleName *string
 
 	lui, err := file.ReadUsageInformation()
-	log.Printf("Attempting to refresh credentials for account [%s] with role [%s]", lui.AccountName, lui.Role)
+	log.Printf(
+		"Attempting to refresh credentials for account [%s] with role [%s]",
+		lui.AccountName,
+		lui.Role,
+	)
 	if err != nil {
 		if strings.Contains(err.Error(), "no such file") {
 			log.Println("Nothing to refresh yet.")
 			accountsOutput := sso.ListAccounts(ctx, clientInformation.AccessToken)
 			accountInfo := prompt.RetrieveAccountInfo(accountsOutput, prompt.Prompter{})
-			listRolesOutput := sso.ListAvailableRoles(ctx, *accountInfo.AccountId, clientInformation.AccessToken)
+			listRolesOutput := sso.ListAvailableRoles(
+				ctx,
+				*accountInfo.AccountId,
+				clientInformation.AccessToken,
+			)
 			roleInfo := prompt.RetrieveRoleInfo(listRolesOutput, prompt.Prompter{})
 			roleName = roleInfo.RoleName
 			accountID = accountInfo.AccountId
@@ -64,7 +71,12 @@ func RefreshCredentials(oidcClient *ssooidc.Client, ssoClient *sso.Client) {
 		roleName = &lui.Role
 	}
 
-	roleCredentials, err := sso.GetRolesCredentials(ctx, *accountID, *roleName, clientInformation.AccessToken)
+	roleCredentials, err := sso.GetRolesCredentials(
+		ctx,
+		*accountID,
+		*roleName,
+		clientInformation.AccessToken,
+	)
 	if err != nil {
 		log.Fatalf("Something went wrong: %q", err)
 	}
@@ -74,5 +86,8 @@ func RefreshCredentials(oidcClient *ssooidc.Client, ssoClient *sso.Client) {
 
 	log.Printf("Successful retrieved credentials for account: %s", *accountID)
 	log.Printf("Assumed role: %s", *roleName)
-	log.Printf("Credentials expire at: %s\n", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
+	log.Printf(
+		"Credentials expire at: %s\n",
+		time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0),
+	)
 }

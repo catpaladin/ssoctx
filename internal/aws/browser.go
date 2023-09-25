@@ -8,8 +8,10 @@ import (
 	"runtime"
 )
 
-var execCmd = exec.Command
-var system = runtime.GOOS
+var (
+	execCmd = exec.Command
+	system  = runtime.GOOS
+)
 
 // OpenURLInBrowser opens browser for supported runtimes
 func OpenURLInBrowser(system, url string) {
