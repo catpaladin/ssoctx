@@ -18,7 +18,7 @@ var (
 		Long:  "Login to AWS SSO by retrieving short-lived credentials.",
 		Run: func(cmd *cobra.Command, args []string) {
 			file.GetConfigs(&startURL, &region)
-			oidcClient, ssoClient := aws.CreateClients(ctx, region)
+			oidcClient, ssoClient := CreateClients(ctx, region)
 			promptSelector := prompt.Prompter{}
 
 			oidc := aws.NewOIDCClient(oidcClient, startURL)

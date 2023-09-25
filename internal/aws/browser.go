@@ -8,17 +8,20 @@ import (
 	"runtime"
 )
 
+var execCmd = exec.Command
+var system = runtime.GOOS
+
 // OpenURLInBrowser opens browser for supported runtimes
-func OpenURLInBrowser(url string) {
+func OpenURLInBrowser(system, url string) {
 	var err error
 
-	switch runtime.GOOS {
+	switch system {
 	case "linux":
-		err = exec.Command("xdg-open", url).Start()
+		err = execCmd("xdg-open", url).Start()
 	case "darwin":
-		err = exec.Command("open", url).Start()
+		err = execCmd("open", url).Start()
 	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+		err = execCmd("rundll32", "url.dll,FileProtocolHandler", url).Start()
 	default:
 		err = fmt.Errorf("could not open %s - unsupported platform. Please open the URL manually", url)
 	}

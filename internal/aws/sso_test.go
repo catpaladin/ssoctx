@@ -12,14 +12,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sso/types"
 )
 
-type mockClient struct{}
+type mockSSOClient struct{}
 
-func newMockClient() *mockClient {
-	return &mockClient{}
+func newMockSSOClient() *mockSSOClient {
+	return &mockSSOClient{}
 }
 
 // Mock GetRoleCredentials outputs
-func (m *mockClient) GetRoleCredentials(ctx context.Context, params *sso.GetRoleCredentialsInput, optFns ...func(*sso.Options)) (*sso.GetRoleCredentialsOutput, error) {
+func (m *mockSSOClient) GetRoleCredentials(ctx context.Context, params *sso.GetRoleCredentialsInput, optFns ...func(*sso.Options)) (*sso.GetRoleCredentialsOutput, error) {
 	_, ctxCheck := ctx.Deadline()
 	if ctxCheck != false {
 		return &sso.GetRoleCredentialsOutput{}, errors.New("Context deadline set and true")
@@ -54,7 +54,7 @@ func (m *mockClient) GetRoleCredentials(ctx context.Context, params *sso.GetRole
 }
 
 // Mock ListAccounts outputs
-func (m *mockClient) ListAccounts(ctx context.Context, params *sso.ListAccountsInput, optFns ...func(*sso.Options)) (*sso.ListAccountsOutput, error) {
+func (m *mockSSOClient) ListAccounts(ctx context.Context, params *sso.ListAccountsInput, optFns ...func(*sso.Options)) (*sso.ListAccountsOutput, error) {
 	_, ctxCheck := ctx.Deadline()
 	if ctxCheck != false {
 		return &sso.ListAccountsOutput{}, errors.New("Context deadline set and true")
@@ -82,7 +82,7 @@ func (m *mockClient) ListAccounts(ctx context.Context, params *sso.ListAccountsI
 }
 
 // Mock ListAccountRoles outputs
-func (m *mockClient) ListAccountRoles(ctx context.Context, params *sso.ListAccountRolesInput, optFns ...func(*sso.Options)) (*sso.ListAccountRolesOutput, error) {
+func (m *mockSSOClient) ListAccountRoles(ctx context.Context, params *sso.ListAccountRolesInput, optFns ...func(*sso.Options)) (*sso.ListAccountRolesOutput, error) {
 	_, ctxCheck := ctx.Deadline()
 	if ctxCheck != false {
 		return &sso.ListAccountRolesOutput{}, errors.New("Context deadline set and true")
@@ -143,7 +143,7 @@ func TestClient_ListAvailableRoles(t *testing.T) {
 	}{
 		{
 			name:   "TestListAvailableRoles",
-			client: newMockClient(),
+			client: newMockSSOClient(),
 			args: args{
 				ctx:         context.Background(),
 				accountID:   "098765432123",
@@ -160,7 +160,7 @@ func TestClient_ListAvailableRoles(t *testing.T) {
 		},
 		{
 			name:   "TestListAvailableRolesMultiple",
-			client: newMockClient(),
+			client: newMockSSOClient(),
 			args: args{
 				ctx:         context.Background(),
 				accountID:   "222233334444",
@@ -181,7 +181,7 @@ func TestClient_ListAvailableRoles(t *testing.T) {
 		},
 		{
 			name:   "TestListAvailableRolesEmpty",
-			client: newMockClient(),
+			client: newMockSSOClient(),
 			args: args{
 				ctx:         context.Background(),
 				accountID:   "123456789012",
@@ -215,7 +215,7 @@ func TestClient_ListAccounts(t *testing.T) {
 	}{
 		{
 			name:   "TestListAccounts",
-			client: newMockClient(),
+			client: newMockSSOClient(),
 			args: args{
 				ctx:         context.Background(),
 				accessToken: "goodtoken",
@@ -231,7 +231,7 @@ func TestClient_ListAccounts(t *testing.T) {
 		},
 		{
 			name:   "TestListAccountsEmpty",
-			client: newMockClient(),
+			client: newMockSSOClient(),
 			args: args{
 				ctx:         context.Background(),
 				accessToken: "badtoken",
@@ -273,7 +273,7 @@ func TestClient_GetRolesCredentials(t *testing.T) {
 	}{
 		{
 			name:   "TestGetRoleCredentials",
-			client: newMockClient(),
+			client: newMockSSOClient(),
 			args: args{
 				ctx:         context.Background(),
 				accountID:   a,
@@ -287,7 +287,7 @@ func TestClient_GetRolesCredentials(t *testing.T) {
 		},
 		{
 			name:   "TestGetRoleCredentialsEmpty",
-			client: newMockClient(),
+			client: newMockSSOClient(),
 			args: args{
 				ctx:         context.Background(),
 				accountID:   "222233334444",
@@ -299,7 +299,7 @@ func TestClient_GetRolesCredentials(t *testing.T) {
 		},
 		{
 			name:   "TestGetRoleCredentialsError",
-			client: newMockClient(),
+			client: newMockSSOClient(),
 			args: args{
 				ctx:         context.Background(),
 				accountID:   "098765432123",

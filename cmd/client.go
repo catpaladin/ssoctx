@@ -1,5 +1,4 @@
-// Package aws contains all the aws logic
-package aws
+package cmd
 
 import (
 	"context"
@@ -13,10 +12,7 @@ import (
 
 // CreateClients is used to return sso and ssooidc clients
 func CreateClients(ctx context.Context, region string) (*ssooidc.Client, *sso.Client) {
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(region),
-		config.WithCredentialsProvider(aws.AnonymousCredentials{}),
-	)
+	cfg, err := loadConfig(ctx, region)
 	if err != nil {
 		log.Panicf("Encountered error in InitClients: %v", err)
 	}
@@ -25,4 +21,15 @@ func CreateClients(ctx context.Context, region string) (*ssooidc.Client, *sso.Cl
 	ssoClient := sso.NewFromConfig(cfg)
 
 	return oidcClient, ssoClient
+}
+
+func loadConfig(ctx context.Context, region string) (aws.Config, error) {
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(region),
+		config.WithCredentialsProvider(aws.AnonymousCredentials{}),
+	)
+	if err != nil {
+		return aws.Config{}, err
+	}
+	return cfg, nil
 }

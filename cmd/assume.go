@@ -23,7 +23,7 @@ var (
 			conf := file.ReadConfig(file.ConfigFilePath())
 			startURL = conf.StartURL
 			region = conf.Region
-			oidcClient, ssoClient := aws.CreateClients(ctx, region)
+			oidcClient, ssoClient := CreateClients(ctx, region)
 			AssumeDirectly(oidcClient, ssoClient)
 		},
 	}

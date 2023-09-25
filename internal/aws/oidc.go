@@ -49,9 +49,7 @@ func NewOIDCClient(c OIDCClient, url string) *OIDCClientAPI {
 func (o *OIDCClientAPI) ProcessClientInformation(ctx context.Context) (info.ClientInformation, error) {
 	clientInformation, err := file.ReadClientInformation(file.ClientInfoFileDestination())
 	if err != nil || clientInformation.StartURL != o.url {
-		var clientInfoPointer *info.ClientInformation
-		clientInfoPointer = o.registerClient(ctx)
-		clientInfoPointer = o.retrieveToken(ctx, clientInfoPointer)
+		clientInfoPointer := o.getClientInfoPointer(ctx)
 		file.WriteStructToFile(clientInfoPointer, file.ClientInfoFileDestination())
 		clientInformation = *clientInfoPointer
 	} else if clientInformation.IsExpired() {
@@ -61,15 +59,21 @@ func (o *OIDCClientAPI) ProcessClientInformation(ctx context.Context) (info.Clie
 	return clientInformation, err
 }
 
+// getClientInfoPointer handles registering and retrieving the token for client info
+func (o *OIDCClientAPI) getClientInfoPointer(ctx context.Context) *info.ClientInformation {
+	var clientInfoPointer *info.ClientInformation
+	clientInfoPointer = o.registerClient(ctx)
+	clientInfoPointer = o.retrieveToken(ctx, clientInfoPointer)
+	return clientInfoPointer
+}
+
 // handleOutdatedAccessToken handles client information if AccessToken is expired
 func (o *OIDCClientAPI) handleOutdatedAccessToken(ctx context.Context, clientInformation info.ClientInformation) info.ClientInformation {
 	registerClientOutput := ssooidc.RegisterClientOutput{ClientId: &clientInformation.ClientID, ClientSecret: &clientInformation.ClientSecret}
-	deviceAuth, err := o.startDeviceAuthorization(ctx, &registerClientOutput)
+	deviceAuth, err := o.startDeviceAuthorization(ctx, &registerClientOutput, system)
 	if err != nil {
 		log.Println("Failed to authorize device. Regenerating AccessToken")
-		var clientInfoPointer *info.ClientInformation
-		clientInfoPointer = o.registerClient(ctx)
-		clientInfoPointer = o.retrieveToken(ctx, clientInfoPointer)
+		clientInfoPointer := o.getClientInfoPointer(ctx)
 		file.WriteStructToFile(clientInfoPointer, file.ClientInfoFileDestination())
 		return *clientInfoPointer
 	}
@@ -92,7 +96,7 @@ func (o *OIDCClientAPI) registerClient(ctx context.Context) *info.ClientInformat
 		log.Fatalf("Something went wrong: %q", err)
 	}
 
-	deviceAuth, err := o.startDeviceAuthorization(ctx, output)
+	deviceAuth, err := o.startDeviceAuthorization(ctx, output, system)
 	if err != nil {
 		log.Fatalf("Something went wrong: %q", err)
 	}
@@ -108,7 +112,7 @@ func (o *OIDCClientAPI) registerClient(ctx context.Context) *info.ClientInformat
 }
 
 // startDeviceAuthorization is used to start device auth and open browser
-func (o *OIDCClientAPI) startDeviceAuthorization(ctx context.Context, rco *ssooidc.RegisterClientOutput) (ssooidc.StartDeviceAuthorizationOutput, error) {
+func (o *OIDCClientAPI) startDeviceAuthorization(ctx context.Context, rco *ssooidc.RegisterClientOutput, system string) (ssooidc.StartDeviceAuthorizationOutput, error) {
 	output, err := o.client.StartDeviceAuthorization(ctx, &ssooidc.StartDeviceAuthorizationInput{
 		ClientId:     rco.ClientId,
 		ClientSecret: rco.ClientSecret,
@@ -118,7 +122,7 @@ func (o *OIDCClientAPI) startDeviceAuthorization(ctx context.Context, rco *ssooi
 		return ssooidc.StartDeviceAuthorizationOutput{}, fmt.Errorf("Encountered error at startDeviceAuthorization: %w", err)
 	}
 	log.Println("Please verify your client request: " + *output.VerificationUriComplete)
-	OpenURLInBrowser(*output.VerificationUriComplete)
+	OpenURLInBrowser(system, *output.VerificationUriComplete)
 	return *output, nil
 }
 
