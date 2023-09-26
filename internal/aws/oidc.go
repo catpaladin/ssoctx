@@ -48,12 +48,21 @@ func NewOIDCClient(c OIDCClient, url string) *OIDCClientAPI {
 // If the start url is overridden via flag and differs from the previous one, a new Client is registered for the given start url.
 // When the ClientInformation.AccessToken is expired, it starts retrieving a new AccessToken
 func (o *OIDCClientAPI) ProcessClientInformation(ctx context.Context) (info.ClientInformation, error) {
+	// check for running authorization process by file lock
+	if file.LockStatus() {
+		log.Fatalln("There is already an authorization process running")
+	}
+
 	clientInformation, err := file.ReadClientInformation(file.ClientInfoFileDestination())
 	if err != nil || clientInformation.StartURL != o.url {
+		file.AddLock()
+		defer file.RemoveLock()
 		clientInfoPointer := o.getClientInfoPointer(ctx)
 		file.WriteStructToFile(clientInfoPointer, file.ClientInfoFileDestination())
 		clientInformation = *clientInfoPointer
 	} else if clientInformation.IsExpired() {
+		file.AddLock()
+		defer file.RemoveLock()
 		log.Println("AccessToken expired. Start retrieving a new AccessToken.")
 		clientInformation = o.handleOutdatedAccessToken(ctx, clientInformation)
 	}

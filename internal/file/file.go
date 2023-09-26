@@ -51,15 +51,6 @@ func GetCredentialProcess(accountID, roleName, region string) CredentialsTemplat
 	}
 }
 
-// CredentialProcessInputs contains inputs needed to write credentials
-type CredentialProcessInputs struct {
-	accountID string
-	roleName  string
-	profile   string
-	region    string
-	startURL  string
-}
-
 // GetCredentialsFilePath returns the credentials path
 func GetCredentialsFilePath() string {
 	homeDir, err := os.UserHomeDir()
@@ -113,7 +104,7 @@ func ReadClientInformation(file string) (info.ClientInformation, error) {
 func WriteStructToFile(payload interface{}, dest string) {
 	targetDir := filepath.Dir(dest)
 	if !isFileOrFolderExisting(targetDir) {
-		err := os.MkdirAll(targetDir, 0o700)
+		err := os.MkdirAll(targetDir, 0o755)
 		if err != nil {
 			log.Fatalf("Something went wrong: %q", err)
 		}
@@ -122,7 +113,9 @@ func WriteStructToFile(payload interface{}, dest string) {
 	if err != nil {
 		log.Fatalf("Something went wrong: %q", err)
 	}
-	_ = os.WriteFile(dest, file, 0o600)
+	if err = os.WriteFile(dest, file, 0o644); err != nil {
+		log.Fatalf("Encountered error trying to write file %s: %q", file, err)
+	}
 }
 
 // isFileOrFolderExisting checks either or not a target file is existing.
@@ -145,10 +138,10 @@ func createCredentialsFile() {
 		log.Fatalf("Something went wrong: %q", err)
 	}
 	f, err := os.OpenFile(CredentialsFilePath, os.O_CREATE, 0o644)
-	defer f.Close()
 	if err != nil {
 		log.Fatalf("Something went wrong: %q", err)
 	}
+	defer f.Close()
 }
 
 // writeTemplateToFile loads credentials to replace and write new.
@@ -161,7 +154,9 @@ func writeTemplateToFile(template *CredentialsTemplate, profile string) {
 	}
 
 	replaceProfile(creds, template, profile)
-	creds.SaveTo(CredentialsFilePath)
+	if err := creds.SaveTo(CredentialsFilePath); err != nil {
+		log.Fatalf("Encountered error saving credentials: %q", err)
+	}
 }
 
 // replaceProfile is used to selectively delete a profile from the credentials file.

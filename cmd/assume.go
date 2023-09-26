@@ -36,8 +36,8 @@ func init() {
 	assumeCmd.Flags().StringVarP(&region, "region", "r", "", "set / override aws region")
 	assumeCmd.Flags().StringVarP(&profile, "profile", "p", "default", "the profile name to set in credentials file")
 	assumeCmd.Flags().BoolVarP(&persist, "persist", "", false, "toggle if you want to write short-lived creds to credentials file")
-	assumeCmd.Flags().StringVarP(&roleName, "role-name", "n", "", "role name to assume")
-	assumeCmd.Flags().StringVarP(&accountID, "account-id", "a", "", "account id where the role exists")
+	assumeCmd.Flags().StringVarP(&accountID, "account-id", "a", "", "set account id for desired aws account")
+	assumeCmd.Flags().StringVarP(&roleName, "role-name", "n", "", "set / override with permission set role name")
 }
 
 // AssumeDirectly is used to assume sso role directly.

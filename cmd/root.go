@@ -18,6 +18,7 @@ var (
 	persist   bool
 	roleName  string
 	accountID string
+	clean     bool
 
 	ctx = context.Background()
 
