@@ -8,6 +8,7 @@ import (
 	"aws-sso-util/internal/file"
 	"aws-sso-util/internal/prompt"
 
+	"github.com/aws/aws-sdk-go-v2/service/sso/types"
 	"github.com/spf13/cobra"
 )
 
@@ -25,9 +26,15 @@ var (
 			oidc := aws.NewOIDCClient(oidcClient, startURL)
 			sso := aws.NewSSOClient(ssoClient)
 
-			clientInformation, _ := oidc.ProcessClientInformation(ctx)
-			accountsOutput := sso.ListAccounts(ctx, clientInformation.AccessToken)
-			accountInfo := prompt.RetrieveAccountInfo(accountsOutput, promptSelector)
+			var accountInfo *types.AccountInfo
+			clientInformation, err := oidc.ProcessClientInformation(ctx)
+			if err != nil {
+				clientInformation, accountInfo = reprocessCredentials(oidcClient, ssoClient, startURL, promptSelector)
+			} else {
+				accountsOutput := sso.ListAccounts(ctx, clientInformation.AccessToken)
+				accountInfo = prompt.RetrieveAccountInfo(accountsOutput, promptSelector)
+			}
+
 			listRolesOutput := sso.ListAvailableRoles(ctx, *accountInfo.AccountId, clientInformation.AccessToken)
 			roleInfo := prompt.RetrieveRoleInfo(listRolesOutput, promptSelector)
 			file.SaveUsageInformation(accountInfo, roleInfo)
