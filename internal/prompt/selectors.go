@@ -95,9 +95,7 @@ func RetrieveAccountInfo(accounts *sso.ListAccountsOutput, selector Prompt) *typ
 func sortAccounts(accountList []types.AccountInfo) []types.AccountInfo {
 	var sortedAccounts []types.AccountInfo
 
-	for _, info := range accountList {
-		sortedAccounts = append(sortedAccounts, info)
-	}
+	sortedAccounts = append(sortedAccounts, accountList...)
 	sort.Slice(sortedAccounts, func(i, j int) bool {
 		return *sortedAccounts[i].AccountName < *sortedAccounts[j].AccountName
 	})

@@ -26,6 +26,7 @@ func (receiver Prompter) Select(label string, toSelect []string, searcher func(i
 		Size:              20,
 		Searcher:          searcher,
 		StartInSearchMode: true,
+		Stdout:            SilentStdout,
 	}
 	index, value, err := prompt.Run()
 	if err != nil {
@@ -53,10 +54,7 @@ func fuzzySearchWithPrefixAnchor(itemsToSelect []string, linePrefix string) func
 		role := itemsToSelect[index]
 
 		if strings.HasPrefix(input, linePrefix) {
-			if strings.HasPrefix(role, input) {
-				return true
-			}
-			return false
+			return strings.HasPrefix(role, input)
 		}
 
 		if fuzzy.MatchFold(input, role) {

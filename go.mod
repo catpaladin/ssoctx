@@ -24,11 +24,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.22 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.15 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.17 // indirect
-	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
+	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	golang.org/x/sys v0.0.0-20181122145206-62eef0e2fa9b // indirect
+	golang.org/x/sys v0.0.0-20220310020820-b874c991c1a5 // indirect
 	golang.org/x/text v0.3.7 // indirect
 )
