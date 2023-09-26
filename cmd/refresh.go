@@ -16,7 +16,8 @@ import (
 var refreshCmd = &cobra.Command{
 	Use:   "refresh",
 	Short: "Refresh your previously used credentials",
-	Long:  `Refreshes the credentials based on last account and role.`,
+	Long: `Refreshes the previously used credentials to the default profile.
+  Use the flags to refresh profile credentials.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		conf := file.ReadConfig(file.ConfigFilePath())
 		startURL = conf.StartURL
@@ -46,16 +47,21 @@ func RefreshCredentials(oidcClient *ssooidc.Client, ssoClient *sso.Client) {
 	}
 	log.Printf("Using Start URL %s", clientInformation.StartURL)
 
-	accountsOutput := sso.ListAccounts(ctx, clientInformation.AccessToken)
-	accountInfo := prompt.RetrieveAccountInfo(accountsOutput, prompt.Prompter{})
-	listRolesOutput := sso.ListAvailableRoles(
-		ctx,
-		*accountInfo.AccountId,
-		clientInformation.AccessToken,
-	)
-	roleInfo := prompt.RetrieveRoleInfo(listRolesOutput, prompt.Prompter{})
-	roleName = *roleInfo.RoleName
-	accountID = *accountInfo.AccountId
+	if len(accountID) == 0 && len(roleName) == 0 {
+		log.Println("No account-id or role-name provided.")
+		log.Printf("Refreshing credentials from access to profile: %s", profile)
+		accountsOutput := sso.ListAccounts(ctx, clientInformation.AccessToken)
+		accountInfo := prompt.RetrieveAccountInfo(accountsOutput, prompt.Prompter{})
+		listRolesOutput := sso.ListAvailableRoles(
+			ctx,
+			*accountInfo.AccountId,
+			clientInformation.AccessToken,
+		)
+		roleInfo := prompt.RetrieveRoleInfo(listRolesOutput, prompt.Prompter{})
+		roleName = *roleInfo.RoleName
+		accountID = *accountInfo.AccountId
+	}
+	log.Printf("Refreshing for account %s with permission set role %s", accountID, roleName)
 
 	roleCredentials, err := sso.GetRolesCredentials(
 		ctx,
