@@ -45,19 +45,12 @@ var (
 			}
 
 			if persist {
-				template := file.ProcessPersistedCredentialsTemplate(roleCredentials, profile)
-				file.WriteAWSCredentialsFile(template)
+				template := file.GetPersistedCredentials(roleCredentials, region)
+				file.WriteAWSCredentialsFile(&template, profile)
 				log.Printf("Credentails expire at: %s\n", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
 			} else {
-				fileInputs := file.GetCredentialFileInputs(
-					accountID,
-					roleName,
-					profile,
-					region,
-					startURL,
-				)
-				template := file.ProcessCredentialProcessTemplate(fileInputs)
-				file.WriteAWSCredentialsFile(template)
+				template := file.GetCredentialProcess(accountID, roleName, region)
+				file.WriteAWSCredentialsFile(&template, profile)
 			}
 		},
 	}

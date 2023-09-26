@@ -80,8 +80,7 @@ func (o *OIDCClientAPI) handleOutdatedAccessToken(ctx context.Context, clientInf
 	}
 
 	clientInformation.DeviceCode = *deviceAuth.DeviceCode
-	var clientInfoPointer *info.ClientInformation
-	clientInfoPointer = o.retrieveToken(ctx, &clientInformation)
+	clientInfoPointer := o.retrieveToken(ctx, &clientInformation)
 	file.WriteStructToFile(clientInfoPointer, file.ClientInfoFileDestination())
 	return *clientInfoPointer
 }

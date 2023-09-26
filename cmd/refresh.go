@@ -81,8 +81,8 @@ func RefreshCredentials(oidcClient *ssooidc.Client, ssoClient *sso.Client) {
 		log.Fatalf("Something went wrong: %q", err)
 	}
 
-	template := file.ProcessPersistedCredentialsTemplate(roleCredentials, profile)
-	file.WriteAWSCredentialsFile(template)
+	template := file.GetCredentialProcess(*accountID, *roleName, region)
+	file.WriteAWSCredentialsFile(&template, profile)
 
 	log.Printf("Successful retrieved credentials for account: %s", *accountID)
 	log.Printf("Assumed role: %s", *roleName)

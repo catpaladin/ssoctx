@@ -52,22 +52,15 @@ func AssumeDirectly(oidcClient *ssooidc.Client, ssoClient *sso.Client) {
 	}
 
 	if persist {
-		template := file.ProcessPersistedCredentialsTemplate(roleCredentials, profile)
-		file.WriteAWSCredentialsFile(template)
+		template := file.GetPersistedCredentials(roleCredentials, region)
+		file.WriteAWSCredentialsFile(&template, profile)
 
 		log.Printf("Successful retrieved credentials for account: %s", accountID)
 		log.Printf("Assumed role: %s", roleName)
 		log.Printf("Credentials expire at: %s\n", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
 	} else {
-		fileInputs := file.GetCredentialFileInputs(
-			accountID,
-			roleName,
-			profile,
-			region,
-			startURL,
-		)
-		template := file.ProcessCredentialProcessTemplate(fileInputs)
-		file.WriteAWSCredentialsFile(template)
+		template := file.GetCredentialProcess(accountID, roleName, region)
+		file.WriteAWSCredentialsFile(&template, profile)
 
 		creds := CredentialProcessOutput{
 			Version:         1,

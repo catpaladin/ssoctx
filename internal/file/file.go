@@ -13,11 +13,43 @@ import (
 	"aws-sso-util/internal/info"
 
 	"github.com/aws/aws-sdk-go-v2/service/sso"
-	"github.com/valyala/fasttemplate"
+	"gopkg.in/ini.v1"
 )
 
 // CredentialsFilePath is used to store the credentials path to variable
 var CredentialsFilePath = GetCredentialsFilePath()
+
+// CredentialsTemplate is what is expected in the ini file
+type CredentialsTemplate struct {
+	AwsAccessKeyId     string `ini:"aws_access_key_id,omitempty"`
+	AwsSecretAccessKey string `ini:"aws_secret_access_key,omitempty"`
+	AwsSessionToken    string `ini:"aws_session_token,omitempty"`
+	CredentialProcess  string `ini:"credential_process,omitempty"`
+	Output             string `ini:"output,omitempty"`
+	Region             string `ini:"region,omitempty"`
+}
+
+// GetPersistedCredentials returns a struct containing persisted creds values
+func GetPersistedCredentials(creds *sso.GetRoleCredentialsOutput, region string) CredentialsTemplate {
+	return CredentialsTemplate{
+		AwsAccessKeyId:     *creds.RoleCredentials.AccessKeyId,
+		AwsSecretAccessKey: *creds.RoleCredentials.SecretAccessKey,
+		AwsSessionToken:    *creds.RoleCredentials.SessionToken,
+		Region:             region,
+	}
+}
+
+// GetCredentialProcess returns a struct containing credential process values
+func GetCredentialProcess(accountID, roleName, region string) CredentialsTemplate {
+	return CredentialsTemplate{
+		CredentialProcess: fmt.Sprintf(
+			"aws-sso-util assume -a %s -n %s",
+			accountID,
+			roleName,
+		),
+		Region: region,
+	}
+}
 
 // CredentialProcessInputs contains inputs needed to write credentials
 type CredentialProcessInputs struct {
@@ -26,17 +58,6 @@ type CredentialProcessInputs struct {
 	profile   string
 	region    string
 	startURL  string
-}
-
-// GetCredentialFileInputs takes inputs and returns a CredentialProcessInputs struct
-func GetCredentialFileInputs(accountID, roleName, profile, region, startURL string) CredentialProcessInputs {
-	return CredentialProcessInputs{
-		accountID: accountID,
-		roleName:  roleName,
-		profile:   profile,
-		region:    region,
-		startURL:  startURL,
-	}
 }
 
 // GetCredentialsFilePath returns the credentials path
@@ -65,61 +86,13 @@ func ClientInfoFileDestination() string {
 	}
 }
 
-// ProcessPersistedCredentialsTemplate is used to template the persisted credentials file
-func ProcessPersistedCredentialsTemplate(credentials *sso.GetRoleCredentialsOutput, profile string) string {
-	template := `[{{profile}}]
-aws_access_key_id = {{access_key_id}}
-aws_secret_access_key = {{secret_access_key}}
-aws_session_token = {{session_token}}
-output = json
-region = us-east-1
-`
-
-	engine := fasttemplate.New(template, "{{", "}}")
-	filledTemplate := engine.ExecuteString(map[string]interface{}{
-		"profile":           profile,
-		"access_key_id":     *credentials.RoleCredentials.AccessKeyId,
-		"secret_access_key": *credentials.RoleCredentials.SecretAccessKey,
-		"session_token":     *credentials.RoleCredentials.SessionToken,
-	})
-	return filledTemplate
-}
-
-// ProcessCredentialProcessTemplate is used to template the direct assume
-func ProcessCredentialProcessTemplate(credentialInputs CredentialProcessInputs) string {
-	template := `[{{profile}}]
-credential_process = aws-sso-util assume -a {{accountId}} -n {{roleName}}
-region = {{region}}
-`
-
-	engine := fasttemplate.New(template, "{{", "}}")
-	filledTemplate := engine.ExecuteString(map[string]interface{}{
-		"profile":   credentialInputs.profile,
-		"region":    credentialInputs.region,
-		"accountId": credentialInputs.accountID,
-		"roleName":  credentialInputs.roleName,
-	})
-	return filledTemplate
-}
-
 // WriteAWSCredentialsFile is used to write the template to credentials
-func WriteAWSCredentialsFile(template string) {
+func WriteAWSCredentialsFile(template *CredentialsTemplate, profile string) {
 	if !isFileOrFolderExisting(CredentialsFilePath) {
-		dir := filepath.Dir(CredentialsFilePath)
-		err := os.MkdirAll(dir, 0o755)
-		if err != nil {
-			log.Fatalf("Something went wrong: %q", err)
-		}
-		f, err := os.OpenFile(CredentialsFilePath, os.O_CREATE, 0o644)
-		if err != nil {
-			log.Fatalf("Something went wrong: %q", err)
-		}
-		defer f.Close()
+		createCredentialsFile()
 	}
-	err := os.WriteFile(CredentialsFilePath, []byte(template), 0o644)
-	if err != nil {
-		log.Fatalf("Something went wrong: %q", err)
-	}
+	// Write to ini file
+	writeTemplateToFile(template, profile)
 }
 
 // ReadClientInformation is used to read file for ClientInformation
@@ -162,4 +135,47 @@ func isFileOrFolderExisting(target string) bool {
 	}
 	log.Panicf("Could not determine if file or folder %q exists or not. Exiting.", target)
 	return false
+}
+
+// createCredentialsFile is used to create missing directories and file
+func createCredentialsFile() {
+	dir := filepath.Dir(CredentialsFilePath)
+	err := os.MkdirAll(dir, 0o755)
+	if err != nil {
+		log.Fatalf("Something went wrong: %q", err)
+	}
+	f, err := os.OpenFile(CredentialsFilePath, os.O_CREATE, 0o644)
+	defer f.Close()
+	if err != nil {
+		log.Fatalf("Something went wrong: %q", err)
+	}
+}
+
+// writeTemplateToFile loads credentials to replace and write new.
+// it calls replaceProfile to selectively delete a profile and replace it.
+// it then saves the changes over the credentials file.
+func writeTemplateToFile(template *CredentialsTemplate, profile string) {
+	creds, err := ini.Load(CredentialsFilePath)
+	if err != nil {
+		log.Fatalf("Something went wrong: %q", err)
+	}
+
+	replaceProfile(creds, template, profile)
+	creds.SaveTo(CredentialsFilePath)
+}
+
+// replaceProfile is used to selectively delete a profile from the credentials file.
+// it then uses the new struct to populate the new information.
+func replaceProfile(creds *ini.File, template *CredentialsTemplate, profile string) {
+	creds.DeleteSection(profile)
+
+	newSection, err := creds.NewSection(profile)
+	if err != nil {
+		log.Fatalf("Something went wrong: %q", err)
+	}
+
+	// replace new section wtih template
+	if err = newSection.ReflectFrom(template); err != nil {
+		log.Fatalf("Something went wrong: %q", err)
+	}
 }

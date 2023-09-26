@@ -20,7 +20,7 @@ var (
 		Long: `Generate a config file. All available properities are interactively prompted.
 		Overrides the existing config.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			file.GenerateConfigAction()
+			_ = file.GenerateConfigAction()
 		},
 	}
 
@@ -30,7 +30,7 @@ var (
 		Long: `Edit the config file. All available properities are interactively prompted.
 		Overrides the existing config.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			file.EditConfigAction()
+			_ = file.EditConfigAction()
 		},
 	}
 )

@@ -12,6 +12,7 @@ require (
 	github.com/manifoldco/promptui v0.9.0
 	github.com/spf13/cobra v1.5.0
 	github.com/valyala/fasttemplate v1.2.1
+	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -26,6 +27,7 @@ require (
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	golang.org/x/sys v0.0.0-20181122145206-62eef0e2fa9b // indirect
 	golang.org/x/text v0.3.7 // indirect
