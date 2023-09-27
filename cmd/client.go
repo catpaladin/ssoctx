@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"os"
 
 	awsSSO "aws-sso-util/internal/aws"
@@ -13,13 +13,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
+	"github.com/rs/zerolog"
 )
 
 // CreateClients is used to return sso and ssooidc clients
 func CreateClients(ctx context.Context, region string) (*ssooidc.Client, *sso.Client) {
+	logger := zerolog.Ctx(ctx)
 	cfg, err := loadConfig(ctx, region)
 	if err != nil {
-		log.Panicf("Encountered error in CreateClients: %v", err)
+		logger.Fatal().Msgf("Encountered error in CreateClients: %v", err)
 	}
 
 	oidcClient := ssooidc.NewFromConfig(cfg)
@@ -35,7 +37,8 @@ func loadConfig(ctx context.Context, region string) (aws.Config, error) {
 		config.WithCredentialsProvider(aws.AnonymousCredentials{}),
 	)
 	if err != nil {
-		return aws.Config{}, err
+		errCode := awsSSO.GetAWSErrorCode(ctx, err)
+		return aws.Config{}, fmt.Errorf("%s in loadConfig", errCode)
 	}
 	return cfg, nil
 }
@@ -43,16 +46,18 @@ func loadConfig(ctx context.Context, region string) (aws.Config, error) {
 // reprocessCredentials is used to handle the retry when access token is invalid.
 // this makes it so users do not have to manually delete their access token
 // or overloading handleOutdatedAccessToken with similar logic.
-func reprocessCredentials(oidcClient *ssooidc.Client, startURL string) info.ClientInformation {
-	log.Println("Error in Access Token. Reprocessing Credentials.")
-	if err := os.Remove(file.ClientInfoFileDestination()); err != nil {
-		log.Fatalf("Encountered error in reprocessCredentials: %v", err)
+func reprocessCredentials(ctx context.Context, oidcClient *ssooidc.Client, startURL string) info.ClientInformation {
+	logger := zerolog.Ctx(ctx)
+	logger.Info().Msg("Error in Access Token. Reprocessing Credentials.")
+	destination, _ := file.ClientInfoFileDestination()
+	if err := os.Remove(destination); err != nil {
+		logger.Fatal().Msgf("Encountered error in reprocessCredentials: %v", err)
 	}
 	oidcCli := awsSSO.NewOIDCClient(oidcClient, startURL)
 
 	clientInformation, err := oidcCli.ProcessClientInformation(ctx)
 	if err != nil {
-		log.Fatalf("Encountered error in reprocessCredentials: %v", err)
+		logger.Fatal().Msgf("Encountered error in reprocessCredentials: %v", err)
 	}
 
 	return clientInformation

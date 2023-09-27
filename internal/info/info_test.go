@@ -2,6 +2,7 @@
 package info
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -21,6 +22,7 @@ func TestClientInformation_IsExpired(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
+		ctx    context.Context
 		want   bool
 	}{
 		{
@@ -28,6 +30,7 @@ func TestClientInformation_IsExpired(t *testing.T) {
 			fields: fields{
 				AccessTokenExpiresAt: time.Now().Add(-dur),
 			},
+			ctx:  context.Background(),
 			want: true,
 		},
 		{
@@ -35,6 +38,7 @@ func TestClientInformation_IsExpired(t *testing.T) {
 			fields: fields{
 				AccessTokenExpiresAt: time.Now().Add(dur),
 			},
+			ctx:  context.Background(),
 			want: false,
 		},
 	}
@@ -50,7 +54,7 @@ func TestClientInformation_IsExpired(t *testing.T) {
 				VerificationURIComplete: tt.fields.VerificationURIComplete,
 				StartURL:                tt.fields.StartURL,
 			}
-			if got := ati.IsExpired(); got != tt.want {
+			if got := ati.IsExpired(tt.ctx); got != tt.want {
 				t.Errorf("ClientInformation.IsExpired() = %v, want %v", got, tt.want)
 			}
 		})

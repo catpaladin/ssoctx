@@ -3,17 +3,16 @@ package aws
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 
 	"aws-sso-util/internal/file"
 	"aws-sso-util/internal/info"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
-	"github.com/aws/smithy-go"
+	"github.com/rs/zerolog"
 )
 
 const (
@@ -43,27 +42,36 @@ func NewOIDCClient(c OIDCClient, url string) *OIDCClientAPI {
 	}
 }
 
-// ProcessClientInformation tries to read available ClientInformation.
-// If no ClientInformation is available it retrieves and creates new one and writes this information to disk
-// If the start url is overridden via flag and differs from the previous one, a new Client is registered for the given start url.
-// When the ClientInformation.AccessToken is expired, it starts retrieving a new AccessToken
+// ProcessClientInformation tries to read available ClientInformation
+// If no ClientInformation is available or start url is overrideen, it will process new
+// When the AccessToken is expired, it starts retrieving a new AccessToken
+// A lock is added during the process to prevent concurrent authorizations
 func (o *OIDCClientAPI) ProcessClientInformation(ctx context.Context) (info.ClientInformation, error) {
+	logger := zerolog.Ctx(ctx)
+
 	// check for running authorization process by file lock
-	if file.LockStatus() {
-		log.Fatalln("There is already an authorization process running")
+	if file.LockStatus(ctx) {
+		logger.Fatal().Msg("There is already an authorization process running")
 	}
 
-	clientInformation, err := file.ReadClientInformation(file.ClientInfoFileDestination())
+	destination, err := file.ClientInfoFileDestination()
+	if err != nil {
+		logger.Fatal().Err(err)
+	}
+	clientInformation, err := file.ReadClientInformation(ctx, destination)
 	if err != nil || clientInformation.StartURL != o.url {
-		file.AddLock()
-		defer file.RemoveLock()
+		logger.Debug().Msg("Unable to read ClientInformation. Processing new ClientInformation")
+		file.AddLock(ctx)
+		defer file.RemoveLock(ctx)
+
 		clientInfoPointer := o.getClientInfoPointer(ctx)
-		file.WriteStructToFile(clientInfoPointer, file.ClientInfoFileDestination())
+		file.WriteStructToFile(ctx, clientInfoPointer, destination)
 		clientInformation = *clientInfoPointer
-	} else if clientInformation.IsExpired() {
-		file.AddLock()
-		defer file.RemoveLock()
-		log.Println("AccessToken expired. Start retrieving a new AccessToken.")
+	} else if clientInformation.IsExpired(ctx) {
+		logger.Debug().Msg("AccessToken expired. Start retrieving a new AccessToken.")
+		file.AddLock(ctx)
+		defer file.RemoveLock(ctx)
+
 		clientInformation = o.handleOutdatedAccessToken(ctx, clientInformation)
 	}
 	return clientInformation, err
@@ -71,43 +79,52 @@ func (o *OIDCClientAPI) ProcessClientInformation(ctx context.Context) (info.Clie
 
 // getClientInfoPointer handles registering and retrieving the token for client info
 func (o *OIDCClientAPI) getClientInfoPointer(ctx context.Context) *info.ClientInformation {
-	var clientInfoPointer *info.ClientInformation
-	clientInfoPointer = o.registerClient(ctx)
+	clientInfoPointer := o.registerClient(ctx)
 	clientInfoPointer = o.retrieveToken(ctx, clientInfoPointer)
 	return clientInfoPointer
 }
 
 // handleOutdatedAccessToken handles client information if AccessToken is expired
 func (o *OIDCClientAPI) handleOutdatedAccessToken(ctx context.Context, clientInformation info.ClientInformation) info.ClientInformation {
+	logger := zerolog.Ctx(ctx)
+
+	destination, err := file.ClientInfoFileDestination()
+	if err != nil {
+		logger.Fatal().Err(err)
+	}
+
 	registerClientOutput := ssooidc.RegisterClientOutput{ClientId: &clientInformation.ClientID, ClientSecret: &clientInformation.ClientSecret}
 	deviceAuth, err := o.startDeviceAuthorization(ctx, &registerClientOutput, system)
 	if err != nil {
-		log.Println("Failed to authorize device. Regenerating AccessToken")
+		logger.Warn().Msg("Failed to authorize device. Regenerating AccessToken")
 		clientInfoPointer := o.getClientInfoPointer(ctx)
-		file.WriteStructToFile(clientInfoPointer, file.ClientInfoFileDestination())
+		file.WriteStructToFile(ctx, clientInfoPointer, destination)
 		return *clientInfoPointer
 	}
 
 	clientInformation.DeviceCode = *deviceAuth.DeviceCode
 	clientInfoPointer := o.retrieveToken(ctx, &clientInformation)
-	file.WriteStructToFile(clientInfoPointer, file.ClientInfoFileDestination())
+	file.WriteStructToFile(ctx, clientInfoPointer, destination)
 	return *clientInfoPointer
 }
 
 // RegisterClient is used to start device auth
 func (o *OIDCClientAPI) registerClient(ctx context.Context) *info.ClientInformation {
-	cn := clientName
-	ct := clientType
+	logger := zerolog.Ctx(ctx)
 
-	input := ssooidc.RegisterClientInput{ClientName: &cn, ClientType: &ct}
+	input := ssooidc.RegisterClientInput{
+		ClientName: aws.String(clientName),
+		ClientType: aws.String(clientType),
+	}
 	output, err := o.client.RegisterClient(ctx, &input)
 	if err != nil {
-		log.Fatalf("Something went wrong: %q", err)
+		awsErr := GetAWSErrorCode(ctx, err)
+		logger.Fatal().Msgf("Encountered error in RegisterClient: %s", awsErr)
 	}
 
 	deviceAuth, err := o.startDeviceAuthorization(ctx, output, system)
 	if err != nil {
-		log.Fatalf("Something went wrong: %q", err)
+		logger.Fatal().Msgf("Encountered error in startDeviceAuthorization: %q", err)
 	}
 
 	return &info.ClientInformation{
@@ -122,51 +139,52 @@ func (o *OIDCClientAPI) registerClient(ctx context.Context) *info.ClientInformat
 
 // startDeviceAuthorization is used to start device auth and open browser
 func (o *OIDCClientAPI) startDeviceAuthorization(ctx context.Context, rco *ssooidc.RegisterClientOutput, system string) (ssooidc.StartDeviceAuthorizationOutput, error) {
+	logger := zerolog.Ctx(ctx)
+
 	output, err := o.client.StartDeviceAuthorization(ctx, &ssooidc.StartDeviceAuthorizationInput{
 		ClientId:     rco.ClientId,
 		ClientSecret: rco.ClientSecret,
 		StartUrl:     &o.url,
 	})
 	if err != nil {
-		return ssooidc.StartDeviceAuthorizationOutput{}, fmt.Errorf("Encountered error at startDeviceAuthorization: %w", err)
+		awsErr := GetAWSErrorCode(ctx, err)
+		logger.Error().Msgf("Error in StartDeviceAuthorization: %s", awsErr)
+		return ssooidc.StartDeviceAuthorizationOutput{}, fmt.Errorf("StartDeviceAuthorization returned %s", awsErr)
 	}
-	log.Println("Please verify your client request: " + *output.VerificationUriComplete)
-	OpenURLInBrowser(system, *output.VerificationUriComplete)
+	logger.Info().Msgf("Please verify your client request: " + *output.VerificationUriComplete)
+	OpenURLInBrowser(ctx, system, *output.VerificationUriComplete)
 	return *output, nil
 }
 
 // retrieveToken is used to create the access token from the sso session
 // this is obtained after auth in the browser.
 func (o *OIDCClientAPI) retrieveToken(ctx context.Context, info *info.ClientInformation) *info.ClientInformation {
+	logger := zerolog.Ctx(ctx)
 	input := generateCreateTokenInput(info)
 	// need loop to prevent errors while waiting on auth through browser
 	for {
 		cto, err := o.client.CreateToken(ctx, &input)
 		if err != nil {
-			var ae smithy.APIError
-			if errors.As(err, &ae) {
-				if ae.ErrorCode() == "AuthorizationPendingException" {
-					log.Println("Waiting on authorization..")
-					time.Sleep(5 * time.Second)
-					continue
-				}
-				log.Fatalf("Encountered an error while retrieveToken: %v", err)
+			awsErr := GetAWSErrorCode(ctx, err)
+			if awsErr == "AuthorizationPendingException" {
+				logger.Info().Msg("Waiting on authorization..")
+				time.Sleep(5 * time.Second)
+				continue
 			}
+			logger.Fatal().Msgf("Encountered an error while retrieveToken: %v", err)
 		}
 		info.AccessToken = *cto.AccessToken
 		info.AccessTokenExpiresAt = time.Now().Add(time.Hour * 8)
-		// info.AccessTokenExpiresAt = timer.Now().Add(time.Hour*8 - time.Minute*5)
 		return info
 	}
 }
 
 // generateCreateTokenInput is used to create a CreateTokenInput
 func generateCreateTokenInput(clientInformation *info.ClientInformation) ssooidc.CreateTokenInput {
-	gtp := grantType
 	return ssooidc.CreateTokenInput{
 		ClientId:     &clientInformation.ClientID,
 		ClientSecret: &clientInformation.ClientSecret,
 		DeviceCode:   &clientInformation.DeviceCode,
-		GrantType:    &gtp,
+		GrantType:    aws.String(grantType),
 	}
 }

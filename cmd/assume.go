@@ -1,8 +1,8 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
-	"log"
 	"os"
 	"time"
 
@@ -11,6 +11,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 )
 
@@ -20,11 +21,14 @@ var assumeCmd = &cobra.Command{
 	Long: `Assume directly into an account and SSO role.
 		This is used by the aws default profile.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		conf := file.ReadConfig(file.ConfigFilePath())
+		logger := ConfigureLogger()
+		ctx = logger.WithContext(ctx)
+
+		conf := file.ReadConfig(ctx, file.ConfigFilePath(ctx))
 		startURL = conf.StartURL
 		region = conf.Region
 		oidcClient, ssoClient := CreateClients(ctx, region)
-		AssumeDirectly(oidcClient, ssoClient)
+		AssumeDirectly(ctx, oidcClient, ssoClient)
 	},
 }
 
@@ -38,29 +42,33 @@ func init() {
 	assumeCmd.Flags().BoolVarP(&persist, "persist", "", false, "toggle if you want to write short-lived creds to credentials file")
 	assumeCmd.Flags().StringVarP(&accountID, "account-id", "a", "", "set account id for desired aws account")
 	assumeCmd.Flags().StringVarP(&roleName, "role-name", "n", "", "set / override with permission set role name")
+	assumeCmd.Flags().BoolVarP(&debug, "debug", "", false, "toggle if you want to enable debug logs")
+	assumeCmd.Flags().BoolVarP(&jsonFormat, "json", "", false, "toggle if you want to enable json log output")
 }
 
 // AssumeDirectly is used to assume sso role directly.
 // Directly assumes into a certain account and role, bypassing the prompt and interactive selection.
-func AssumeDirectly(oidcClient *ssooidc.Client, ssoClient *sso.Client) {
+func AssumeDirectly(ctx context.Context, oidcClient *ssooidc.Client, ssoClient *sso.Client) {
+	logger := zerolog.Ctx(ctx)
+
 	oidc := aws.NewOIDCClient(oidcClient, startURL)
 	clientInformation, _ := oidc.ProcessClientInformation(ctx)
 	rci := &sso.GetRoleCredentialsInput{AccountId: &accountID, RoleName: &roleName, AccessToken: &clientInformation.AccessToken}
 	roleCredentials, err := ssoClient.GetRoleCredentials(ctx, rci)
 	if err != nil {
-		log.Fatalf("Something went wrong: %q", err)
+		logger.Fatal().Msgf("Something went wrong: %q", err)
 	}
 
 	if persist {
 		template := file.GetPersistedCredentials(roleCredentials, region)
-		file.WriteAWSCredentialsFile(&template, profile)
+		file.WriteAWSCredentialsFile(ctx, &template, profile)
 
-		log.Printf("Successful retrieved credentials for account: %s", accountID)
-		log.Printf("Assumed role: %s", roleName)
-		log.Printf("Credentials expire at: %s\n", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
+		logger.Info().Msgf("Successful retrieved credentials for account: %s", accountID)
+		logger.Info().Msgf("Assumed role: %s", roleName)
+		logger.Info().Msgf("Credentials expire at: %s", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
 	} else {
 		template := file.GetCredentialProcess(accountID, roleName, region)
-		file.WriteAWSCredentialsFile(&template, profile)
+		file.WriteAWSCredentialsFile(ctx, &template, profile)
 
 		creds := CredentialProcessOutput{
 			Version:         1,

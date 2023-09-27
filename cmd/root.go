@@ -12,13 +12,15 @@ import (
 
 // rootCmd represents the base command when called without any subcommands
 var (
-	startURL  string
-	region    string
-	profile   string
-	persist   bool
-	roleName  string
-	accountID string
-	clean     bool
+	startURL   string
+	region     string
+	profile    string
+	persist    bool
+	roleName   string
+	accountID  string
+	clean      bool
+	debug      bool
+	jsonFormat bool
 
 	ctx = context.Background()
 

@@ -2,14 +2,15 @@
 package file
 
 import (
+	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 
 	"aws-sso-util/internal/prompt"
 
+	"github.com/rs/zerolog"
 	"gopkg.in/yaml.v2"
 )
 
@@ -27,10 +28,11 @@ type AppConfig struct {
 }
 
 // ConfigFilePath is the default config path
-func ConfigFilePath() string {
+func ConfigFilePath(ctx context.Context) string {
+	logger := zerolog.Ctx(ctx)
 	configDir, err := os.UserConfigDir()
 	if err != nil {
-		log.Fatalf("Something went wrong: %q", err)
+		logger.Fatal().Msgf("Encountered error finding user config dir: %q", err)
 	}
 	if runtime.GOOS == "windows" {
 		return fmt.Sprintf("%s%s\\config.yml", configDir, WindowsConfigPath)
@@ -39,8 +41,8 @@ func ConfigFilePath() string {
 }
 
 // GetConfigs reads the config and sets values.
-func GetConfigs(startURL, region *string) {
-	conf := ReadConfig(ConfigFilePath())
+func GetConfigs(ctx context.Context, startURL, region *string) {
+	conf := ReadConfig(ctx, ConfigFilePath(ctx))
 	if len(*startURL) == 0 {
 		*startURL = conf.StartURL
 	}
@@ -50,22 +52,23 @@ func GetConfigs(startURL, region *string) {
 }
 
 // ReadConfig is used to read the config by filePath
-func ReadConfig(filePath string) *AppConfig {
+func ReadConfig(ctx context.Context, filePath string) *AppConfig {
+	logger := zerolog.Ctx(ctx)
 	bytes, err := os.ReadFile(filePath)
 	if err != nil {
-		log.Fatalf("Something went wrong: %q", err)
+		logger.Fatal().Msgf("Encountered error reading file path: %q", err)
 	}
 
 	appConfig := AppConfig{}
 	err = yaml.Unmarshal(bytes, &appConfig)
 	if err != nil {
-		log.Fatalf("Something went wrong: %q", err)
+		logger.Fatal().Msgf("Encountered error in unmarshal of config: %q", err)
 	}
 	return &appConfig
 }
 
 // GenerateConfigAction is used to generate a config yaml
-func GenerateConfigAction() error {
+func GenerateConfigAction(ctx context.Context) error {
 	prompter := prompt.Prompter{}
 	startURL := prompt.PromptStartURL(prompter, "")
 	region := prompt.PromptRegion(prompter)
@@ -74,28 +77,29 @@ func GenerateConfigAction() error {
 		Region:   region,
 	}
 
-	configFile := ConfigFilePath()
-	if err := writeConfig(configFile, appConfig); err != nil {
+	configFile := ConfigFilePath(ctx)
+	if err := writeConfig(ctx, configFile, appConfig); err != nil {
 		return fmt.Errorf("Encountered error at GenerateConfigAction: %w", err)
 	}
 	return nil
 }
 
 // EditConfigAction is used to edit the generated config yaml
-func EditConfigAction() error {
-	config := ReadConfig(ConfigFilePath())
+func EditConfigAction(ctx context.Context) error {
+	config := ReadConfig(ctx, ConfigFilePath(ctx))
 
 	prompter := prompt.Prompter{}
 	config.StartURL = prompt.PromptStartURL(prompter, config.StartURL)
 	config.Region = prompt.PromptRegion(prompter)
 
-	if err := writeConfig(ConfigFilePath(), *config); err != nil {
+	if err := writeConfig(ctx, ConfigFilePath(ctx), *config); err != nil {
 		return fmt.Errorf("Encountered error at EditConfigAction: %w", err)
 	}
 	return nil
 }
 
-func writeConfig(filePath string, ac AppConfig) error {
+func writeConfig(ctx context.Context, filePath string, ac AppConfig) error {
+	logger := zerolog.Ctx(ctx)
 	bytes, err := yaml.Marshal(ac)
 	if err != nil {
 		return fmt.Errorf("Encountered error at writeConfig: %w", err)
@@ -110,7 +114,7 @@ func writeConfig(filePath string, ac AppConfig) error {
 		return fmt.Errorf("Encountered error at writeConfig: %w", err)
 	}
 
-	log.Printf("Config file generated: %s", filePath)
+	logger.Info().Msgf("Config file generated: %s", filePath)
 
 	return nil
 }

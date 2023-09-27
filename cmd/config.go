@@ -20,7 +20,11 @@ var (
 		Long: `Generate a config file. All available properities are interactively prompted.
 		Overrides the existing config.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			_ = file.GenerateConfigAction()
+			logger := ConfigureLogger()
+			ctx = logger.WithContext(ctx)
+			if err := file.GenerateConfigAction(ctx); err != nil {
+				logger.Fatal().Err(err)
+			}
 		},
 	}
 
@@ -30,7 +34,11 @@ var (
 		Long: `Edit the config file. All available properities are interactively prompted.
 		Overrides the existing config.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			_ = file.EditConfigAction()
+			logger := ConfigureLogger()
+			ctx = logger.WithContext(ctx)
+			if err := file.EditConfigAction(ctx); err != nil {
+				logger.Fatal().Err(err)
+			}
 		},
 	}
 )
@@ -40,4 +48,6 @@ func init() {
 	rootCmd.AddCommand(configCmd)
 	configCmd.AddCommand(generateCmd)
 	configCmd.AddCommand(editCmd)
+	configCmd.Flags().BoolVarP(&debug, "debug", "", false, "toggle if you want to enable debug logs")
+	configCmd.Flags().BoolVarP(&jsonFormat, "json", "", false, "toggle if you want to enable json log output")
 }

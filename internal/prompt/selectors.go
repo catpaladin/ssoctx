@@ -3,13 +3,13 @@ package prompt
 
 import (
 	"fmt"
-	"log"
 	"sort"
 	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/sso/types"
 	"github.com/lithammer/fuzzysearch/fuzzy"
+	"github.com/rs/zerolog/log"
 )
 
 // AwsRegions contains selectable regions

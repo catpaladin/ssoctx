@@ -1,7 +1,12 @@
 // Package info contains client info
 package info
 
-import "time"
+import (
+	"context"
+	"time"
+
+	"github.com/rs/zerolog"
+)
 
 // ClientInformation is used to store client information
 type ClientInformation struct {
@@ -16,9 +21,9 @@ type ClientInformation struct {
 }
 
 // IsExpired is used to tell if AccessToken is expired in client information
-func (ati ClientInformation) IsExpired() bool {
-	if ati.AccessTokenExpiresAt.Before(time.Now()) {
-		return true
-	}
-	return false
+func (ati ClientInformation) IsExpired(ctx context.Context) bool {
+	logger := zerolog.Ctx(ctx)
+	logger.Debug().Msgf("ClientInformation time: %v", ati.AccessTokenExpiresAt)
+	logger.Debug().Msgf("Time now: %v", time.Now())
+	return ati.AccessTokenExpiresAt.Before(time.Now())
 }

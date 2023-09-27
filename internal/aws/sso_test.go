@@ -10,6 +10,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/sso/types"
+	"github.com/rs/zerolog/log"
 )
 
 type mockSSOClient struct{}
@@ -301,7 +302,7 @@ func TestClient_GetRolesCredentials(t *testing.T) {
 			name:   "TestGetRoleCredentialsError",
 			client: newMockSSOClient(),
 			args: args{
-				ctx:         context.Background(),
+				ctx:         log.Logger.WithContext(context.Background()),
 				accountID:   "098765432123",
 				roleName:    "UltimatePowerUser",
 				accessToken: "badtoken",

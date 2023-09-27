@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"log"
 	"os"
 	"time"
 
@@ -20,24 +19,28 @@ var (
 		Short: "Login to AWS SSO",
 		Long:  "Login to AWS SSO by retrieving short-lived credentials.",
 		Run: func(cmd *cobra.Command, args []string) {
-			file.GetConfigs(&startURL, &region)
+			logger := ConfigureLogger()
+			ctx = logger.WithContext(ctx)
+
+			file.GetConfigs(ctx, &startURL, &region)
 			oidcClient, ssoClient := CreateClients(ctx, region)
-			promptSelector := prompt.Prompter{}
+			promptSelector := prompt.Prompter{Ctx: ctx}
 
 			oidc := aws.NewOIDCClient(oidcClient, startURL)
 			sso := aws.NewSSOClient(ssoClient)
 
 			if clean {
-				file.RemoveLock()
-				if err := os.Remove(file.ClientInfoFileDestination()); err != nil {
-					log.Panicf("Failed to remove access token: %q", err)
+				file.RemoveLock(ctx)
+				destination, _ := file.ClientInfoFileDestination()
+				if err := os.Remove(destination); err != nil {
+					logger.Panic().Msgf("Failed to remove access token: %q", err)
 				}
 			}
 
 			var accountInfo *types.AccountInfo
 			clientInformation, err := oidc.ProcessClientInformation(ctx)
 			if err != nil {
-				clientInformation = reprocessCredentials(oidcClient, startURL)
+				clientInformation = reprocessCredentials(ctx, oidcClient, startURL)
 			}
 
 			if len(accountID) == 0 {
@@ -54,16 +57,16 @@ var (
 
 			roleCredentials, err := sso.GetRolesCredentials(ctx, accountID, roleName, clientInformation.AccessToken)
 			if err != nil {
-				log.Fatalf("Encountered error attempting to GetRoleCredentials: %v", err)
+				logger.Fatal().Msgf("Encountered error attempting to GetRoleCredentials: %v", err)
 			}
 
 			if persist {
 				template := file.GetPersistedCredentials(roleCredentials, region)
-				file.WriteAWSCredentialsFile(&template, profile)
-				log.Printf("Credentails expire at: %s\n", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
+				file.WriteAWSCredentialsFile(ctx, &template, profile)
+				logger.Info().Msgf("Credentails expire at: %s", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
 			} else {
 				template := file.GetCredentialProcess(accountID, roleName, region)
-				file.WriteAWSCredentialsFile(&template, profile)
+				file.WriteAWSCredentialsFile(ctx, &template, profile)
 			}
 		},
 	}
@@ -79,4 +82,6 @@ func init() {
 	loginCmd.Flags().StringVarP(&profile, "profile", "p", "default", "the profile name to set in credentials file")
 	loginCmd.Flags().BoolVarP(&persist, "persist", "", false, "toggle if you want to write short-lived creds to credentials file")
 	loginCmd.Flags().BoolVarP(&clean, "clean", "", false, "toggle if you want to remove lock and access token")
+	loginCmd.Flags().BoolVarP(&debug, "debug", "", false, "toggle if you want to enable debug logs")
+	loginCmd.Flags().BoolVarP(&jsonFormat, "json", "", false, "toggle if you want to enable json log output")
 }

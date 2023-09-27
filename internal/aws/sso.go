@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go-v2/service/sso"
+	"github.com/rs/zerolog"
 )
 
 // SSOClient is used to abstract the client calls for mock testing
@@ -26,17 +27,30 @@ func NewSSOClient(s SSOClient) *Client {
 
 // ListAvailableRoles is used to return a ListAccountRolesOutput
 func (c *Client) ListAvailableRoles(ctx context.Context, accountID, accessToken string) *sso.ListAccountRolesOutput {
+	logger := zerolog.Ctx(ctx)
 	lari := &sso.ListAccountRolesInput{AccountId: &accountID, AccessToken: &accessToken}
-	roles, _ := c.client.ListAccountRoles(ctx, lari)
+	roles, err := c.client.ListAccountRoles(ctx, lari)
+	if err != nil {
+		// pass through for debug
+		_ = GetAWSErrorCode(ctx, err)
+		logger.Error().Err(err)
+	}
+	logger.Debug().Msgf("ListAccountRoles returned %d available roles", len(roles.RoleList))
 
 	return roles
 }
 
 // ListAccounts is used to return the ListAccountsOutput
 func (c *Client) ListAccounts(ctx context.Context, accessToken string) *sso.ListAccountsOutput {
+	logger := zerolog.Ctx(ctx)
 	var maxSize int32 = 500
 	lai := sso.ListAccountsInput{AccessToken: &accessToken, MaxResults: &maxSize}
-	accounts, _ := c.client.ListAccounts(ctx, &lai)
+	accounts, err := c.client.ListAccounts(ctx, &lai)
+	if err != nil {
+		// pass through for debug
+		_ = GetAWSErrorCode(ctx, err)
+		logger.Error().Err(err)
+	}
 
 	return accounts
 }
@@ -46,6 +60,8 @@ func (c *Client) GetRolesCredentials(ctx context.Context, accountID, roleName, a
 	rci := &sso.GetRoleCredentialsInput{AccountId: &accountID, RoleName: &roleName, AccessToken: &accessToken}
 	roleCredentials, err := c.client.GetRoleCredentials(ctx, rci)
 	if err != nil {
+		// pass through for debug
+		_ = GetAWSErrorCode(ctx, err)
 		return &sso.GetRoleCredentialsOutput{}, err
 	}
 	return roleCredentials, nil
