@@ -41,6 +41,7 @@ func init() {
 	refreshCmd.Flags().BoolVarP(&persist, "persist", "", false, "toggle if you want to write short-lived creds to credentials file")
 	refreshCmd.Flags().BoolVarP(&debug, "debug", "", false, "toggle if you want to enable debug logs")
 	refreshCmd.Flags().BoolVarP(&jsonFormat, "json", "", false, "toggle if you want to enable json log output")
+	refreshCmd.Flags().BoolVarP(&export, "export", "", false, "toggle if you want to print aws credentials as environment variables to export")
 }
 
 // RefreshCredentials is used to refresh credentials
@@ -90,6 +91,13 @@ func RefreshCredentials(ctx context.Context, oidcClient *ssooidc.Client, ssoClie
 
 	if len(startURL) == 0 {
 		startURL = clientInformation.StartURL
+	}
+
+	// export creds if toggled, otherwise unset in terminal session
+	if export {
+		printEnvironmentVariables(roleCredentials)
+	} else {
+		unsetEnvironmentVariables()
 	}
 
 	if persist {

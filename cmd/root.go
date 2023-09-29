@@ -21,6 +21,7 @@ var (
 	clean      bool
 	debug      bool
 	jsonFormat bool
+	export     bool
 
 	ctx = context.Background()
 

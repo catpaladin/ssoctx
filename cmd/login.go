@@ -64,6 +64,13 @@ var (
 				logger.Fatal().Msgf("Encountered error attempting to GetRoleCredentials: %v", err)
 			}
 
+			// export creds if toggled, otherwise unset in terminal session
+			if export {
+				printEnvironmentVariables(roleCredentials)
+			} else {
+				unsetEnvironmentVariables()
+			}
+
 			if persist {
 				template := file.GetPersistedCredentials(roleCredentials, region)
 				file.WriteAWSCredentialsFile(ctx, &template, profile)
@@ -88,4 +95,5 @@ func init() {
 	loginCmd.Flags().BoolVarP(&clean, "clean", "", false, "toggle if you want to remove lock and access token")
 	loginCmd.Flags().BoolVarP(&debug, "debug", "", false, "toggle if you want to enable debug logs")
 	loginCmd.Flags().BoolVarP(&jsonFormat, "json", "", false, "toggle if you want to enable json log output")
+	loginCmd.Flags().BoolVarP(&export, "export", "", false, "toggle if you want to print aws credentials as environment variables to export")
 }
