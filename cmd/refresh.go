@@ -88,11 +88,15 @@ func RefreshCredentials(ctx context.Context, oidcClient *ssooidc.Client, ssoClie
 		logger.Fatal().Msgf("Something went wrong: %q", err)
 	}
 
+	if len(startURL) == 0 {
+		startURL = clientInformation.StartURL
+	}
+
 	if persist {
 		template := file.GetPersistedCredentials(roleCredentials, region)
 		file.WriteAWSCredentialsFile(ctx, &template, profile)
 	} else {
-		template := file.GetCredentialProcess(accountID, roleName, region)
+		template := file.GetCredentialProcess(accountID, roleName, region, startURL)
 		file.WriteAWSCredentialsFile(ctx, &template, profile)
 	}
 

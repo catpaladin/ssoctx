@@ -41,12 +41,13 @@ func GetPersistedCredentials(creds *sso.GetRoleCredentialsOutput, region string)
 }
 
 // GetCredentialProcess returns a struct containing credential process values
-func GetCredentialProcess(accountID, roleName, region string) CredentialsTemplate {
+func GetCredentialProcess(accountID, roleName, region, startURL string) CredentialsTemplate {
 	return CredentialsTemplate{
 		CredentialProcess: fmt.Sprintf(
-			"aws-sso-util assume -a %s -n %s",
+			"aws-sso-util assume -a %s -n %s -u %s",
 			accountID,
 			roleName,
+			startURL[0],
 		),
 		Region: region,
 	}

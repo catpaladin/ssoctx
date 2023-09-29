@@ -55,6 +55,10 @@ var (
 				roleName = *roleInfo.RoleName
 			}
 
+			if len(startURL) == 0 {
+				startURL = clientInformation.StartURL
+			}
+
 			roleCredentials, err := sso.GetRolesCredentials(ctx, accountID, roleName, clientInformation.AccessToken)
 			if err != nil {
 				logger.Fatal().Msgf("Encountered error attempting to GetRoleCredentials: %v", err)
@@ -65,7 +69,7 @@ var (
 				file.WriteAWSCredentialsFile(ctx, &template, profile)
 				logger.Info().Msgf("Credentails expire at: %s", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
 			} else {
-				template := file.GetCredentialProcess(accountID, roleName, region)
+				template := file.GetCredentialProcess(accountID, roleName, region, startURL)
 				file.WriteAWSCredentialsFile(ctx, &template, profile)
 			}
 		},

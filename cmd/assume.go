@@ -59,6 +59,10 @@ func AssumeDirectly(ctx context.Context, oidcClient *ssooidc.Client, ssoClient *
 		logger.Fatal().Msgf("Something went wrong: %q", err)
 	}
 
+	if len(startURL) == 0 {
+		startURL = clientInformation.StartURL
+	}
+
 	if persist {
 		template := file.GetPersistedCredentials(roleCredentials, region)
 		file.WriteAWSCredentialsFile(ctx, &template, profile)
@@ -67,7 +71,7 @@ func AssumeDirectly(ctx context.Context, oidcClient *ssooidc.Client, ssoClient *
 		logger.Info().Msgf("Assumed role: %s", roleName)
 		logger.Info().Msgf("Credentials expire at: %s", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
 	} else {
-		template := file.GetCredentialProcess(accountID, roleName, region)
+		template := file.GetCredentialProcess(accountID, roleName, region, startURL)
 		file.WriteAWSCredentialsFile(ctx, &template, profile)
 
 		creds := CredentialProcessOutput{
