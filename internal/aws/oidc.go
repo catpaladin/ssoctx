@@ -51,7 +51,7 @@ func (o *OIDCClientAPI) ProcessClientInformation(ctx context.Context) (info.Clie
 
 	// check for running authorization process by file lock
 	if file.LockStatus(ctx) {
-		logger.Fatal().Msg("There is already an authorization process running")
+		logger.Fatal().Msg("There is already an authorization process running. Please end any concurrent authorizations or run: aws-sso-util login --clean")
 	}
 
 	destination, err := file.ClientInfoFileDestination()
