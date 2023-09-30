@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.3](https://github.com/catpaladin/aws-sso-util/compare/v0.4.2...v0.4.3) (2023-09-30)
+
+
+### Bug Fixes
+
+* move goreleaser to workflow dispatch ([24ec4f7](https://github.com/catpaladin/aws-sso-util/commit/24ec4f704cd7a561926a517aa4f6de5aa6102440))
+* typo ([171556c](https://github.com/catpaladin/aws-sso-util/commit/171556cb2fcb6808616db995895374e5630ab05c))
+
 ## [0.4.2](https://github.com/catpaladin/aws-sso-util/compare/v0.4.1...v0.4.2) (2023-09-30)
 
 
