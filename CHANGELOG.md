@@ -1,0 +1,9 @@
+# Changelog
+
+## [0.4.0](https://github.com/catpaladin/aws-sso-util/compare/v0.3.0...v0.4.0) (2023-09-30)
+
+
+### Features
+
+* minor cleanup and linting ([12e4565](https://github.com/catpaladin/aws-sso-util/commit/12e4565cc1635b339bc9c26a86cee2e1b333efe2))
+* refactor and unit tests ([140a653](https://github.com/catpaladin/aws-sso-util/commit/140a653f34efd43b027313d4b5f3ccff3a62ce6e))
