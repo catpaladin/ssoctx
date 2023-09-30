@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/catpaladin/aws-sso-util/compare/v0.4.0...v0.4.1) (2023-09-30)
+
+
+### Bug Fixes
+
+* get goreleaser to trigger from release-please ([e2f3c44](https://github.com/catpaladin/aws-sso-util/commit/e2f3c44b6e33812c2f560b6a2411d26ed9202ddd))
+
 ## [0.4.0](https://github.com/catpaladin/aws-sso-util/compare/v0.3.0...v0.4.0) (2023-09-30)
 
 
