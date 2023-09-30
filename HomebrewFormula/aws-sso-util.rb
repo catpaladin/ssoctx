@@ -6,11 +6,11 @@ require_relative "lib/custom_download_strategy"
 class AwsSsoUtil < Formula
   desc ""
   homepage ""
-  version "0.3.0"
+  version "0.4.4"
 
   on_macos do
-    url "https://github.com/catpaladin/aws-sso-util/releases/download/v0.3.0/aws-sso-util_0.3.0_darwin_all.tar.gz", using: GitHubPrivateRepositoryReleaseDownloadStrategy
-    sha256 "2745ace7320dd130c5ff1595c12282b6da1793c71c5ff43182ef62fdf5321f33"
+    url "https://github.com/catpaladin/aws-sso-util/releases/download/v0.4.4/aws-sso-util_0.4.4_darwin_all.tar.gz", using: GitHubPrivateRepositoryReleaseDownloadStrategy
+    sha256 "5a02bd1803a4ae78aa30f2c01cd4f655bbef38cbd870cf5064109d7de81a3e13"
 
     def install
       bin.install "aws-sso-util"
@@ -18,17 +18,17 @@ class AwsSsoUtil < Formula
   end
 
   on_linux do
-    if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
-      url "https://github.com/catpaladin/aws-sso-util/releases/download/v0.3.0/aws-sso-util_0.3.0_linux_arm64.tar.gz", using: GitHubPrivateRepositoryReleaseDownloadStrategy
-      sha256 "d20b1a7f1391a6fc04571cd7749157a4ea4433119295dee4ef94322dc3a62416"
+    if Hardware::CPU.intel?
+      url "https://github.com/catpaladin/aws-sso-util/releases/download/v0.4.4/aws-sso-util_0.4.4_linux_amd64.tar.gz", using: GitHubPrivateRepositoryReleaseDownloadStrategy
+      sha256 "39d21be55fab7eb21e40bbf14f2f11223327646d27e182ba705ffd768a5147f0"
 
       def install
         bin.install "aws-sso-util"
       end
     end
-    if Hardware::CPU.intel?
-      url "https://github.com/catpaladin/aws-sso-util/releases/download/v0.3.0/aws-sso-util_0.3.0_linux_amd64.tar.gz", using: GitHubPrivateRepositoryReleaseDownloadStrategy
-      sha256 "c7f93223f18a07f281032addb4649174ca9549fad0fc38379327c6c30f3fd700"
+    if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
+      url "https://github.com/catpaladin/aws-sso-util/releases/download/v0.4.4/aws-sso-util_0.4.4_linux_arm64.tar.gz", using: GitHubPrivateRepositoryReleaseDownloadStrategy
+      sha256 "871a5596c03aec0aaee0c45b0c7442e1b8495038b4ef9c2587c533bcc64abe7d"
 
       def install
         bin.install "aws-sso-util"
