@@ -28,6 +28,7 @@ go install github.com/catpaladin/aws-sso-util@main
 
 # Usage
 ```
+Commit: <commit of built version>
 A tool for seting up AWS SSO.
 		Use to login to SSO portal and refresh session.
 
