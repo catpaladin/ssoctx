@@ -28,13 +28,12 @@ var refreshCmd = &cobra.Command{
 		startURL = conf.StartURL
 		region = conf.Region
 		oidcClient, ssoClient := CreateClients(ctx, region)
-		RefreshCredentials(ctx, oidcClient, ssoClient)
+		refreshCredentials(ctx, oidcClient, ssoClient)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(refreshCmd)
-
 	refreshCmd.Flags().StringVarP(&roleName, "role-name", "n", "", "set with permission set role name")
 	refreshCmd.Flags().StringVarP(&accountID, "account-id", "a", "", "set account id for desired aws account")
 	refreshCmd.Flags().StringVarP(&profile, "profile", "p", "default", "the profile name to set in credentials file")
@@ -44,8 +43,8 @@ func init() {
 	refreshCmd.Flags().BoolVarP(&export, "export", "", false, "toggle if you want to print aws credentials as environment variables to export")
 }
 
-// RefreshCredentials is used to refresh credentials
-func RefreshCredentials(ctx context.Context, oidcClient *ssooidc.Client, ssoClient *sso.Client) {
+// refreshCredentials is used to refresh credentials
+func refreshCredentials(ctx context.Context, oidcClient *ssooidc.Client, ssoClient *sso.Client) {
 	logger := zerolog.Ctx(ctx)
 
 	oidc := aws.NewOIDCClient(oidcClient, startURL)

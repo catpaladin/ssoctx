@@ -44,7 +44,6 @@ var (
 )
 
 func init() {
-	// subcommands
 	rootCmd.AddCommand(configCmd)
 	configCmd.AddCommand(generateCmd)
 	configCmd.AddCommand(editCmd)

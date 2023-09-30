@@ -10,10 +10,10 @@ import (
 func printEnvironmentVariables(creds *sso.GetRoleCredentialsOutput) {
 	// unset and then set
 	unsetEnvironmentVariables()
-	fmt.Println("Please copy and paste credentials to use environment variables\n")
-	fmt.Printf("export AWS_ACCESS_KEY_ID=%s\n", *creds.RoleCredentials.AccessKeyId)
-	fmt.Printf("export AWS_SECRET_ACCESS_KEY=%s\n", *creds.RoleCredentials.SecretAccessKey)
-	fmt.Printf("export AWS_SESSION_TOKEN=%s\n", *creds.RoleCredentials.SessionToken)
+	fmt.Println("Please copy and paste credentials to use environment variables")
+	fmt.Printf("export AWS_ACCESS_KEY_ID=%s", *creds.RoleCredentials.AccessKeyId)
+	fmt.Printf("export AWS_SECRET_ACCESS_KEY=%s", *creds.RoleCredentials.SecretAccessKey)
+	fmt.Printf("export AWS_SESSION_TOKEN=%s", *creds.RoleCredentials.SessionToken)
 }
 
 func unsetEnvironmentVariables() {

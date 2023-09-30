@@ -28,14 +28,21 @@ var assumeCmd = &cobra.Command{
 		startURL = conf.StartURL
 		region = conf.Region
 		oidcClient, ssoClient := CreateClients(ctx, region)
-		AssumeDirectly(ctx, oidcClient, ssoClient)
+		assumeDirectly(ctx, oidcClient, ssoClient)
 	},
+}
+
+// CredentialProcessOutput is used to marshal results from GetRoleCredentials
+type CredentialProcessOutput struct {
+	Version         int    `json:"Version"`
+	AccessKeyID     string `json:"AccessKeyId"`
+	Expiration      string `json:"Expiration"`
+	SecretAccessKey string `json:"SecretAccessKey"`
+	SessionToken    string `json:"SessionToken"`
 }
 
 func init() {
 	rootCmd.AddCommand(assumeCmd)
-
-	// flags
 	assumeCmd.Flags().StringVarP(&startURL, "start-url", "u", "", "set / override aws sso url start url")
 	assumeCmd.Flags().StringVarP(&region, "region", "r", "", "set / override aws region")
 	assumeCmd.Flags().StringVarP(&profile, "profile", "p", "default", "the profile name to set in credentials file")
@@ -46,9 +53,9 @@ func init() {
 	assumeCmd.Flags().BoolVarP(&jsonFormat, "json", "", false, "toggle if you want to enable json log output")
 }
 
-// AssumeDirectly is used to assume sso role directly.
+// assumeDirectly is used to assume sso role directly.
 // Directly assumes into a certain account and role, bypassing the prompt and interactive selection.
-func AssumeDirectly(ctx context.Context, oidcClient *ssooidc.Client, ssoClient *sso.Client) {
+func assumeDirectly(ctx context.Context, oidcClient *ssooidc.Client, ssoClient *sso.Client) {
 	logger := zerolog.Ctx(ctx)
 
 	oidc := aws.NewOIDCClient(oidcClient, startURL)
@@ -84,13 +91,4 @@ func AssumeDirectly(ctx context.Context, oidcClient *ssooidc.Client, ssoClient *
 		bytes, _ := json.Marshal(creds)
 		os.Stdout.Write(bytes)
 	}
-}
-
-// CredentialProcessOutput is used to marshal results from GetRoleCredentials
-type CredentialProcessOutput struct {
-	Version         int    `json:"Version"`
-	AccessKeyID     string `json:"AccessKeyId"`
-	Expiration      string `json:"Expiration"`
-	SecretAccessKey string `json:"SecretAccessKey"`
-	SessionToken    string `json:"SessionToken"`
 }
