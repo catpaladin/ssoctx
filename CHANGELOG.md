@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/catpaladin/aws-sso-util/compare/v0.4.1...v0.4.2) (2023-09-30)
+
+
+### Bug Fixes
+
+* update readme for current ([c77cb73](https://github.com/catpaladin/aws-sso-util/commit/c77cb7351ea0a79c88933d022bc81f2013633c86))
+
 ## [0.4.1](https://github.com/catpaladin/aws-sso-util/compare/v0.4.0...v0.4.1) (2023-09-30)
 
 
