@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.4](https://github.com/catpaladin/aws-sso-util/compare/v0.4.3...v0.4.4) (2023-09-30)
+
+
+### Bug Fixes
+
+* single quotes are needed around version ([7ea5fd4](https://github.com/catpaladin/aws-sso-util/commit/7ea5fd416d346507beaadb44665e0b8423c4cf34))
+
 ## [0.4.3](https://github.com/catpaladin/aws-sso-util/compare/v0.4.2...v0.4.3) (2023-09-30)
 
 
