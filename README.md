@@ -20,7 +20,7 @@ brew install catpaladin/aws-sso-util/aws-sso-util
 ```
 
 ## go
-requires go v1.18+
+requires go v1.20+
 
 ```
 go install github.com/catpaladin/aws-sso-util@main

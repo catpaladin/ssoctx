@@ -11,6 +11,7 @@ builds:
 
 release:
   prerelease: auto
+  mode: append
 
 universal_binaries:
   - replace: true
