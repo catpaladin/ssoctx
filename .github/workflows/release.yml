@@ -1,7 +1,7 @@
 name: goreleaser
 
 on:
-  workerflow_dispatch:
+  workflow_dispatch:
 
 permissions:
   contents: write
