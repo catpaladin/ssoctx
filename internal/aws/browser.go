@@ -15,8 +15,8 @@ var (
 	system  = runtime.GOOS
 )
 
-// OpenURLInBrowser opens browser for supported runtimes
-func OpenURLInBrowser(ctx context.Context, system, url string) {
+// openURLInBrowser opens browser for supported runtimes
+func openURLInBrowser(ctx context.Context, system, url string) error {
 	var err error
 	logger := zerolog.Ctx(ctx)
 
@@ -32,6 +32,7 @@ func OpenURLInBrowser(ctx context.Context, system, url string) {
 		err = fmt.Errorf("Could not open %s on unsupported platform. Please open the URL manually", url)
 	}
 	if err != nil {
-		logger.Fatal().Err(err)
+		return err
 	}
+	return nil
 }

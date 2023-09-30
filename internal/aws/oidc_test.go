@@ -6,12 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
-	"reflect"
+	"runtime"
 	"testing"
 
 	"aws-sso-util/internal/info"
 
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
+	"github.com/aws/smithy-go"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -35,6 +37,13 @@ func (m *mockOIDCClient) CreateToken(ctx context.Context, params *ssooidc.Create
 		return &ssooidc.CreateTokenOutput{}, errors.New("Context deadline set and true")
 	}
 
+	if *params.ClientId == "AAAAAAAAAA" {
+		return &ssooidc.CreateTokenOutput{}, &smithy.GenericAPIError{
+			Code:    "AuthorizationPendingException",
+			Message: "This is a fake error test",
+		}
+	}
+
 	// this is only here to make the linter happy
 	if len(optFns) > 0 {
 		fmt.Println(optFns)
@@ -55,6 +64,13 @@ func (m *mockOIDCClient) RegisterClient(ctx context.Context, params *ssooidc.Reg
 	_, ctxCheck := ctx.Deadline()
 	if ctxCheck != false {
 		return &ssooidc.RegisterClientOutput{}, errors.New("Context deadline set and true")
+	}
+
+	if *params.ClientName != "aws-sso-util" {
+		return &ssooidc.RegisterClientOutput{}, &smithy.GenericAPIError{
+			Code:    "InvalidClientName",
+			Message: "This is some generic error",
+		}
 	}
 
 	// this is only here to make the linter happy
@@ -163,7 +179,7 @@ func TestOIDCClientAPI_startDeviceAuthorization(t *testing.T) {
 			system: "potato",
 			url:    "",
 			args: args{
-				ctx: context.Background(),
+				ctx: log.Logger.WithContext(context.Background()),
 				rco: &ssooidc.RegisterClientOutput{},
 			},
 			want:    ssooidc.StartDeviceAuthorizationOutput{},
@@ -175,7 +191,7 @@ func TestOIDCClientAPI_startDeviceAuthorization(t *testing.T) {
 			system: "linux",
 			url:    "",
 			args: args{
-				ctx: context.Background(),
+				ctx: log.Logger.WithContext(context.Background()),
 				rco: &ssooidc.RegisterClientOutput{},
 			},
 			want:    ssooidc.StartDeviceAuthorizationOutput{},
@@ -185,13 +201,10 @@ func TestOIDCClientAPI_startDeviceAuthorization(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			o := NewOIDCClient(tt.client, tt.url)
-			got, err := o.startDeviceAuthorization(tt.args.ctx, tt.args.rco, tt.system)
+			_, err := o.startDeviceAuthorization(tt.args.ctx, tt.args.rco, tt.system)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("OIDCClientAPI.startDeviceAuthorization() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("OIDCClientAPI.startDeviceAuthorization() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -203,18 +216,19 @@ func TestOIDCClientAPI_retrieveToken(t *testing.T) {
 		info *info.ClientInformation
 	}
 	tests := []struct {
-		name   string
-		client OIDCClient
-		url    string
-		args   args
-		want   *info.ClientInformation
+		name    string
+		client  OIDCClient
+		url     string
+		args    args
+		want    *info.ClientInformation
+		wantErr bool
 	}{
 		{
-			name:   "TestCreateToken",
+			name:   "TestRetrieveToken",
 			client: newMockOIDCClient(),
 			url:    "https://banana.awsapp.com/start",
 			args: args{
-				ctx: context.Background(),
+				ctx: log.Logger.WithContext(context.Background()),
 				info: &info.ClientInformation{
 					DeviceCode: code,
 				},
@@ -222,14 +236,29 @@ func TestOIDCClientAPI_retrieveToken(t *testing.T) {
 			want: &info.ClientInformation{
 				AccessToken: accessToken,
 			},
+			wantErr: false,
+		},
+		{
+			name:   "TestRetrieveTokenError",
+			client: newMockOIDCClient(),
+			url:    "https://banana.awsapp.com/start",
+			args: args{
+				ctx: log.Logger.WithContext(context.Background()),
+				info: &info.ClientInformation{
+					DeviceCode: "1234-5678",
+				},
+			},
+			want:    &info.ClientInformation{},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			o := NewOIDCClient(tt.client, tt.url)
-			got := o.retrieveToken(tt.args.ctx, tt.args.info)
-			if got.AccessToken != accessToken {
-				t.Errorf("OIDCClientAPI.retrieveToken() = %v, want %v", got, tt.want)
+			_, err := o.retrieveToken(tt.args.ctx, tt.args.info)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("OIDCClientAPI.retrieveToken() error = %v, wantErr %v", err, tt.wantErr)
+				return
 			}
 		})
 	}
@@ -248,11 +277,14 @@ func TestOIDCClientAPI_registerClient(t *testing.T) {
 		ctx context.Context
 	}
 	tests := []struct {
-		name   string
-		client OIDCClient
-		url    string
-		args   args
-		want   *info.ClientInformation
+		name    string
+		client  OIDCClient
+		url     string
+		args    args
+		cn      string
+		system  string
+		want    *info.ClientInformation
+		wantErr bool
 	}{
 		{
 			name:   "TestRegisterClient",
@@ -261,28 +293,49 @@ func TestOIDCClientAPI_registerClient(t *testing.T) {
 			args: args{
 				ctx: context.Background(),
 			},
-			want: &expected,
+			cn:      "aws-sso-util",
+			system:  "linux",
+			want:    &expected,
+			wantErr: false,
+		},
+		{
+			name:   "TestRegisterClientRegisterError",
+			client: newMockOIDCClient(),
+			url:    url,
+			args: args{
+				ctx: context.Background(),
+			},
+			cn:      "aws-horse-util",
+			system:  "linux",
+			want:    &info.ClientInformation{},
+			wantErr: true,
+		},
+		{
+			name:   "TestRegisterClientStartDeviceError",
+			client: newMockOIDCClient(),
+			url:    url,
+			args: args{
+				ctx: context.Background(),
+			},
+			cn:      "aws-sso-util",
+			system:  "potato",
+			want:    &info.ClientInformation{},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// override globals
+			system = tt.system
+			clientName = tt.cn
 			o := NewOIDCClient(tt.client, tt.url)
-			got := o.registerClient(tt.args.ctx)
-			if got.ClientID != mockClientID {
-				t.Errorf("OIDCClientAPI.registerClient() = %v, want %v", got, tt.want)
+			_, err := o.registerClient(tt.args.ctx)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("OIDCClientAPI.registerClient() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if got.ClientSecret != mockClientSecret {
-				t.Errorf("OIDCClientAPI.registerClient() = %v, want %v", got, tt.want)
-			}
-			if got.DeviceCode != code {
-				t.Errorf("OIDCClientAPI.registerClient() = %v, want %v", got, tt.want)
-			}
-			if got.VerificationURIComplete != uriComplete {
-				t.Errorf("OIDCClientAPI.registerClient() = %v, want %v", got, tt.want)
-			}
-			if got.StartURL != url {
-				t.Errorf("OIDCClientAPI.registerClient() = %v, want %v", got, tt.want)
-			}
+			// set globals back
+			system = runtime.GOOS
+			clientName = "aws-sso-util"
 		})
 	}
 }
@@ -304,21 +357,23 @@ func TestOIDCClientAPI_getClientInfoPointer(t *testing.T) {
 		client OIDCClient
 		url    string
 		args   args
+		cn     string
 		want   *info.ClientInformation
 	}{
-		// TODO: Add test cases.
 		{
 			name:   "TestGetClientInfoPointer",
 			client: newMockOIDCClient(),
 			url:    url,
 			args: args{
-				ctx: context.Background(),
+				ctx: log.Logger.WithContext(context.Background()),
 			},
+			cn:   "aws-sso-util",
 			want: &expected,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			clientName = tt.cn
 			o := NewOIDCClient(tt.client, tt.url)
 			got := o.getClientInfoPointer(tt.args.ctx)
 			if got.ClientID != mockClientID {

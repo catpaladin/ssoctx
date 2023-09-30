@@ -18,8 +18,9 @@ import (
 const (
 	grantType  string = "urn:ietf:params:oauth:grant-type:device_code"
 	clientType string = "public"
-	clientName string = "aws-sso-util"
 )
+
+var clientName = "aws-sso-util"
 
 // OIDCClient is used to abstract the client calls for mock testing
 type OIDCClient interface {
@@ -77,13 +78,6 @@ func (o *OIDCClientAPI) ProcessClientInformation(ctx context.Context) (info.Clie
 	return clientInformation, err
 }
 
-// getClientInfoPointer handles registering and retrieving the token for client info
-func (o *OIDCClientAPI) getClientInfoPointer(ctx context.Context) *info.ClientInformation {
-	clientInfoPointer := o.registerClient(ctx)
-	clientInfoPointer = o.retrieveToken(ctx, clientInfoPointer)
-	return clientInfoPointer
-}
-
 // handleOutdatedAccessToken handles client information if AccessToken is expired
 func (o *OIDCClientAPI) handleOutdatedAccessToken(ctx context.Context, clientInformation info.ClientInformation) info.ClientInformation {
 	logger := zerolog.Ctx(ctx)
@@ -103,13 +97,30 @@ func (o *OIDCClientAPI) handleOutdatedAccessToken(ctx context.Context, clientInf
 	}
 
 	clientInformation.DeviceCode = *deviceAuth.DeviceCode
-	clientInfoPointer := o.retrieveToken(ctx, &clientInformation)
+	clientInfoPointer, err := o.retrieveToken(ctx, &clientInformation)
+	if err != nil {
+		logger.Fatal().Msgf("Failed to create access token: %q", err)
+	}
 	file.WriteStructToFile(ctx, clientInfoPointer, destination)
 	return *clientInfoPointer
 }
 
+// getClientInfoPointer handles registering and retrieving the token for client info
+func (o *OIDCClientAPI) getClientInfoPointer(ctx context.Context) *info.ClientInformation {
+	logger := zerolog.Ctx(ctx)
+	clientInfo, err := o.registerClient(ctx)
+	if err != nil {
+		logger.Fatal().Msgf("Failed to create access token: %q", err)
+	}
+	clientInfoPointer, err := o.retrieveToken(ctx, clientInfo)
+	if err != nil {
+		logger.Fatal().Msgf("Failed to create access token: %q", err)
+	}
+	return clientInfoPointer
+}
+
 // RegisterClient is used to start device auth
-func (o *OIDCClientAPI) registerClient(ctx context.Context) *info.ClientInformation {
+func (o *OIDCClientAPI) registerClient(ctx context.Context) (*info.ClientInformation, error) {
 	logger := zerolog.Ctx(ctx)
 
 	input := ssooidc.RegisterClientInput{
@@ -119,12 +130,14 @@ func (o *OIDCClientAPI) registerClient(ctx context.Context) *info.ClientInformat
 	output, err := o.client.RegisterClient(ctx, &input)
 	if err != nil {
 		awsErr := GetAWSErrorCode(ctx, err)
-		logger.Fatal().Msgf("Encountered error in RegisterClient: %s", awsErr)
+		logger.Debug().Msgf("Encountered error in RegisterClient: %s", awsErr)
+		return &info.ClientInformation{}, err
 	}
 
 	deviceAuth, err := o.startDeviceAuthorization(ctx, output, system)
 	if err != nil {
-		logger.Fatal().Msgf("Encountered error in startDeviceAuthorization: %q", err)
+		logger.Debug().Msgf("Encountered error in startDeviceAuthorization: %q", err)
+		return &info.ClientInformation{}, err
 	}
 
 	return &info.ClientInformation{
@@ -134,7 +147,7 @@ func (o *OIDCClientAPI) registerClient(ctx context.Context) *info.ClientInformat
 		DeviceCode:              *deviceAuth.DeviceCode,
 		VerificationURIComplete: *deviceAuth.VerificationUriComplete,
 		StartURL:                o.url,
-	}
+	}, nil
 }
 
 // startDeviceAuthorization is used to start device auth and open browser
@@ -152,18 +165,35 @@ func (o *OIDCClientAPI) startDeviceAuthorization(ctx context.Context, rco *ssooi
 		return ssooidc.StartDeviceAuthorizationOutput{}, fmt.Errorf("StartDeviceAuthorization returned %s", awsErr)
 	}
 	logger.Info().Msgf("Please verify your client request: " + *output.VerificationUriComplete)
-	OpenURLInBrowser(ctx, system, *output.VerificationUriComplete)
+
+	if err := openURLInBrowser(ctx, system, *output.VerificationUriComplete); err != nil {
+		return ssooidc.StartDeviceAuthorizationOutput{}, err
+	}
+
 	return *output, nil
 }
 
 // retrieveToken is used to create the access token from the sso session
 // this is obtained after auth in the browser.
-func (o *OIDCClientAPI) retrieveToken(ctx context.Context, info *info.ClientInformation) *info.ClientInformation {
+func (o *OIDCClientAPI) retrieveToken(ctx context.Context, info *info.ClientInformation) (*info.ClientInformation, error) {
 	logger := zerolog.Ctx(ctx)
 	input := generateCreateTokenInput(info)
+
+	cto, err := o.createToken(ctx, &input)
+	if err != nil {
+		logger.Debug().Msg("Encountered error in retrieveToken with createToken call")
+		return info, err
+	}
+	info.AccessToken = *cto.AccessToken
+	info.AccessTokenExpiresAt = time.Now().Add(time.Hour * 8)
+	return info, nil
+}
+
+func (o *OIDCClientAPI) createToken(ctx context.Context, input *ssooidc.CreateTokenInput) (*ssooidc.CreateTokenOutput, error) {
+	logger := zerolog.Ctx(ctx)
 	// need loop to prevent errors while waiting on auth through browser
 	for {
-		cto, err := o.client.CreateToken(ctx, &input)
+		cto, err := o.client.CreateToken(ctx, input)
 		if err != nil {
 			awsErr := GetAWSErrorCode(ctx, err)
 			if awsErr == "AuthorizationPendingException" {
@@ -171,11 +201,9 @@ func (o *OIDCClientAPI) retrieveToken(ctx context.Context, info *info.ClientInfo
 				time.Sleep(5 * time.Second)
 				continue
 			}
-			logger.Fatal().Msgf("Encountered an error while retrieveToken: %v", err)
+			return nil, fmt.Errorf("Encountered an error while createToken: %v", err)
 		}
-		info.AccessToken = *cto.AccessToken
-		info.AccessTokenExpiresAt = time.Now().Add(time.Hour * 8)
-		return info
+		return cto, nil
 	}
 }
 

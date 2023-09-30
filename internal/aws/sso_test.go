@@ -10,6 +10,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/sso/types"
+	"github.com/aws/smithy-go"
 	"github.com/rs/zerolog/log"
 )
 
@@ -43,7 +44,10 @@ func (m *mockSSOClient) GetRoleCredentials(ctx context.Context, params *sso.GetR
 	}
 
 	if *token == "badtoken" {
-		return &sso.GetRoleCredentialsOutput{}, errors.New("UnauthorizedException: 401")
+		return &sso.GetRoleCredentialsOutput{}, &smithy.GenericAPIError{
+			Code:    "UnauthorizedException",
+			Message: "401",
+		}
 	}
 
 	if *accountID == "123456789012" && *roleName == "ViewOnlyUser" {
@@ -79,7 +83,10 @@ func (m *mockSSOClient) ListAccounts(ctx context.Context, params *sso.ListAccoun
 			},
 		}, nil
 	}
-	return &sso.ListAccountsOutput{}, nil
+	return &sso.ListAccountsOutput{}, &smithy.GenericAPIError{
+		Code:    "SomeErrorCode",
+		Message: "Some error message you should read",
+	}
 }
 
 // Mock ListAccountRoles outputs
@@ -92,6 +99,13 @@ func (m *mockSSOClient) ListAccountRoles(ctx context.Context, params *sso.ListAc
 	// this is only here to make the linter happy
 	if len(optFns) > 0 {
 		fmt.Println(optFns)
+	}
+
+	if *params.AccessToken == "badtoken" {
+		return &sso.ListAccountRolesOutput{}, &smithy.GenericAPIError{
+			Code:    "SomeErrorCode",
+			Message: "Some error message you should read",
+		}
 	}
 
 	accountID := params.AccountId
@@ -137,16 +151,17 @@ func TestClient_ListAvailableRoles(t *testing.T) {
 		accessToken string
 	}
 	tests := []struct {
-		name   string
-		client SSOClient
-		args   args
-		want   *sso.ListAccountRolesOutput
+		name    string
+		client  SSOClient
+		args    args
+		want    *sso.ListAccountRolesOutput
+		wantErr bool
 	}{
 		{
 			name:   "TestListAvailableRoles",
 			client: newMockSSOClient(),
 			args: args{
-				ctx:         context.Background(),
+				ctx:         log.Logger.WithContext(context.Background()),
 				accountID:   "098765432123",
 				accessToken: "faketoken",
 			},
@@ -158,12 +173,13 @@ func TestClient_ListAvailableRoles(t *testing.T) {
 					},
 				},
 			},
+			wantErr: false,
 		},
 		{
 			name:   "TestListAvailableRolesMultiple",
 			client: newMockSSOClient(),
 			args: args{
-				ctx:         context.Background(),
+				ctx:         log.Logger.WithContext(context.Background()),
 				accountID:   "222233334444",
 				accessToken: "faketoken",
 			},
@@ -179,16 +195,29 @@ func TestClient_ListAvailableRoles(t *testing.T) {
 					},
 				},
 			},
+			wantErr: false,
 		},
 		{
 			name:   "TestListAvailableRolesEmpty",
 			client: newMockSSOClient(),
 			args: args{
-				ctx:         context.Background(),
+				ctx:         log.Logger.WithContext(context.Background()),
 				accountID:   "123456789012",
 				accessToken: "faketoken",
 			},
-			want: &sso.ListAccountRolesOutput{},
+			want:    &sso.ListAccountRolesOutput{},
+			wantErr: false,
+		},
+		{
+			name:   "TestListAvailableRolesError",
+			client: newMockSSOClient(),
+			args: args{
+				ctx:         log.Logger.WithContext(context.Background()),
+				accountID:   "123456789012",
+				accessToken: "badtoken",
+			},
+			want:    &sso.ListAccountRolesOutput{},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -209,16 +238,17 @@ func TestClient_ListAccounts(t *testing.T) {
 		accessToken string
 	}
 	tests := []struct {
-		name   string
-		client SSOClient
-		args   args
-		want   *sso.ListAccountsOutput
+		name    string
+		client  SSOClient
+		args    args
+		want    *sso.ListAccountsOutput
+		wantErr bool
 	}{
 		{
 			name:   "TestListAccounts",
 			client: newMockSSOClient(),
 			args: args{
-				ctx:         context.Background(),
+				ctx:         log.Logger.WithContext(context.Background()),
 				accessToken: "goodtoken",
 			},
 			want: &sso.ListAccountsOutput{
@@ -229,15 +259,17 @@ func TestClient_ListAccounts(t *testing.T) {
 					},
 				},
 			},
+			wantErr: false,
 		},
 		{
-			name:   "TestListAccountsEmpty",
+			name:   "TestListAccountsError",
 			client: newMockSSOClient(),
 			args: args{
-				ctx:         context.Background(),
+				ctx:         log.Logger.WithContext(context.Background()),
 				accessToken: "badtoken",
 			},
-			want: &sso.ListAccountsOutput{},
+			want:    &sso.ListAccountsOutput{},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -284,18 +316,6 @@ func TestClient_GetRolesCredentials(t *testing.T) {
 			want: &sso.GetRoleCredentialsOutput{
 				RoleCredentials: &output,
 			},
-			wantErr: false,
-		},
-		{
-			name:   "TestGetRoleCredentialsEmpty",
-			client: newMockSSOClient(),
-			args: args{
-				ctx:         context.Background(),
-				accountID:   "222233334444",
-				roleName:    "EmptyUser",
-				accessToken: "validtoken",
-			},
-			want:    &sso.GetRoleCredentialsOutput{},
 			wantErr: false,
 		},
 		{

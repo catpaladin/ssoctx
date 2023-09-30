@@ -19,6 +19,6 @@ func GetAWSErrorCode(ctx context.Context, err error) string {
 		logger.Debug().Msgf("%s", awsErr.ErrorFault().String())
 		return awsErr.ErrorCode()
 	}
-	logger.Error().Msg("Unable to get aws error code from error")
+	logger.Debug().Msg("Unable to get aws error code from error")
 	return ""
 }

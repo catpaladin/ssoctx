@@ -5,6 +5,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 func TestClientInformation_IsExpired(t *testing.T) {
@@ -30,7 +32,7 @@ func TestClientInformation_IsExpired(t *testing.T) {
 			fields: fields{
 				AccessTokenExpiresAt: time.Now().Add(-dur),
 			},
-			ctx:  context.Background(),
+			ctx:  log.Logger.WithContext(context.Background()),
 			want: true,
 		},
 		{
@@ -38,7 +40,7 @@ func TestClientInformation_IsExpired(t *testing.T) {
 			fields: fields{
 				AccessTokenExpiresAt: time.Now().Add(dur),
 			},
-			ctx:  context.Background(),
+			ctx:  log.Logger.WithContext(context.Background()),
 			want: false,
 		},
 	}

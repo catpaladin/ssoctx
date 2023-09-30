@@ -47,7 +47,7 @@ func GetCredentialProcess(accountID, roleName, region, startURL string) Credenti
 			"aws-sso-util assume -a %s -n %s -u %s",
 			accountID,
 			roleName,
-			startURL[0],
+			startURL,
 		),
 		Region: region,
 	}
