@@ -1,8 +1,7 @@
 name: goreleaser
 
 on:
-  release:
-    types: [created]
+  workerflow_dispatch:
 
 permissions:
   contents: write
