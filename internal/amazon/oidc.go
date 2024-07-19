@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"ssoctx/internal/file"
+	"ssoctx/internal/terminal"
 )
 
 var (
@@ -135,24 +136,28 @@ func (o *OIDCClientAPI) startDeviceAuthorization(ctx context.Context, rco *ssooi
 func (o *OIDCClientAPI) retrieveToken(ctx context.Context, info *ClientInformation) (*ClientInformation, error) {
 	input := generateCreateTokenInput(info)
 
-	cto, err := o.createToken(ctx, &input)
+	var cto *ssooidc.CreateTokenOutput
+	var err error
+	action := func() {
+		cto, err = o.createToken(ctx, &input)
+	}
+	terminal.NewSpinner("Waiting on authorization..", action)
 	if err != nil {
 		return info, err
 	}
+
 	info.AccessToken = *cto.AccessToken
 	info.AccessTokenExpiresAt = time.Now().Add(time.Hour * 8)
 	return info, nil
 }
 
 func (o *OIDCClientAPI) createToken(ctx context.Context, input *ssooidc.CreateTokenInput) (*ssooidc.CreateTokenOutput, error) {
-	logger := zerolog.Ctx(ctx)
 	// need loop to prevent errors while waiting on auth through browser
 	for start := time.Now(); time.Since(start) < createTokenTimeout; {
 		cto, err := o.client.CreateToken(ctx, input)
 		if err != nil {
 			awsErrCode := GetAWSErrorCode(ctx, err)
 			if awsErrCode == "AuthorizationPendingException" {
-				logger.Info().Msg("Waiting on authorization..")
 				time.Sleep(5 * time.Second)
 				continue
 			}

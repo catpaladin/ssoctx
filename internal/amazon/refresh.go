@@ -6,7 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"ssoctx/internal/prompt"
+	"ssoctx/internal/terminal"
 )
 
 // RefreshFlagInputs contains all needed inputs for Credentials
@@ -35,21 +35,26 @@ func Credentials(ctx context.Context, o *OIDCClientAPI, s *Client, inputs Refres
 		logger.Info().Msg("No account-id or role-name provided.")
 		logger.Info().Msgf("Refreshing credentials from access to profile: %s", inputs.Profile)
 
-		promptSelector := prompt.Prompter{}
 		accountsOutput, err := s.listAccounts(ctx, clientInformation.AccessToken)
 		if err != nil {
-			logger.Fatal().Msgf("Encountered error in ListAccounts: %v", err)
+			logger.Fatal().Msgf("Encountered error in listAccounts: %v", err)
 		}
-		accountInfo := selectAccount(ctx, accountsOutput, promptSelector)
+		accountInfo, err := terminal.SelectAccount(accountsOutput)
+		if err != nil {
+			logger.Fatal().Msgf("Encountered error in selectAccount: %v", err)
+		}
 		listRolesOutput, err := s.listAvailableRoles(
 			ctx,
 			*accountInfo.AccountId,
 			clientInformation.AccessToken,
 		)
 		if err != nil {
-			logger.Fatal().Msgf("Encountered error in ListAvailableRoles: %v", err)
+			logger.Fatal().Msgf("Encountered error in listAvailableRoles: %v", err)
 		}
-		roleInfo := selectRole(ctx, listRolesOutput, promptSelector)
+		roleInfo, err := terminal.SelectRole(listRolesOutput)
+		if err != nil {
+			logger.Fatal().Msgf("Encountered error in selectRole: %v", err)
+		}
 		inputs.RoleName = *roleInfo.RoleName
 		inputs.AccountID = *accountInfo.AccountId
 	}

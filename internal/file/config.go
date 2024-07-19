@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog"
 	"gopkg.in/yaml.v2"
 
-	"ssoctx/internal/prompt"
+	"ssoctx/internal/terminal"
 )
 
 const (
@@ -63,9 +63,15 @@ func ReadConfig(ctx context.Context, filePath string) *AppConfig {
 
 // GenerateConfig is used to generate a config yaml
 func GenerateConfig(ctx context.Context) error {
-	prompter := prompt.Prompter{}
-	startURL := prompter.Enter("SSO Start URL", "")
-	region := prompt.GetRegion(prompter)
+	startURL, err := terminal.NewInputForm("SSO Start URL")
+	if err != nil {
+		return fmt.Errorf("Encountered error at GenerateConfigAction: %w", err)
+	}
+	region := terminal.SelectRegion()
+	if err != nil {
+		return fmt.Errorf("Encountered error at GenerateConfigAction: %w", err)
+	}
+
 	appConfig := AppConfig{
 		StartURL: startURL,
 		Region:   region,
@@ -82,9 +88,17 @@ func GenerateConfig(ctx context.Context) error {
 func EditConfig(ctx context.Context) error {
 	config := ReadConfig(ctx, GetConfigFilePath(ctx))
 
-	prompter := prompt.Prompter{}
-	config.StartURL = prompter.Enter("SSO Start URL", config.StartURL)
-	config.Region = prompt.GetRegion(prompter)
+	startURL, err := terminal.NewInputForm("SSO Start URL")
+	if err != nil {
+		return fmt.Errorf("Encountered error at GenerateConfigAction: %w", err)
+	}
+	region := terminal.SelectRegion()
+	if err != nil {
+		return fmt.Errorf("Encountered error at GenerateConfigAction: %w", err)
+	}
+
+	config.StartURL = startURL
+	config.Region = region
 
 	if err := writeConfig(ctx, GetConfigFilePath(ctx), *config); err != nil {
 		return fmt.Errorf("Encountered error at EditConfigAction: %w", err)

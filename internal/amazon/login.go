@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"ssoctx/internal/file"
-	"ssoctx/internal/prompt"
+	"ssoctx/internal/terminal"
 )
 
 // LoginFlagInputs contains all needed inputs for Login
@@ -27,7 +27,6 @@ type LoginFlagInputs struct {
 // Login is the primary subcommand used to interactively login
 func Login(ctx context.Context, o *OIDCClientAPI, s *Client, inputs LoginFlagInputs) {
 	logger := zerolog.Ctx(ctx)
-	promptSelector := prompt.Prompter{}
 	destination := clientInfoFileDestination(inputs.StartURL)
 
 	if inputs.Clean {
@@ -37,28 +36,35 @@ func Login(ctx context.Context, o *OIDCClientAPI, s *Client, inputs LoginFlagInp
 		}
 	}
 
-	var accountInfo *types.AccountInfo
 	clientInformation, err := o.processClientInformation(ctx, destination)
 	if err != nil {
-		logger.Fatal().Msgf("Encountered error in ProcessClientInformation: %v", err)
+		logger.Fatal().Msgf("Encountered error in processClientInformation: %v", err)
 	}
 	writeStructToFile(ctx, &clientInformation, destination)
 
+	var accountInfo *types.AccountInfo
 	if len(inputs.AccountID) == 0 {
-		accountsOutput, err := s.listAccounts(ctx, clientInformation.AccessToken)
-		if err != nil {
-			logger.Fatal().Msgf("Encountered error in ListAccounts: %v", err)
+		accountsOutput, laErr := s.listAccounts(ctx, clientInformation.AccessToken)
+		if laErr != nil {
+			logger.Fatal().Msgf("Encountered error in listAccounts: %v", laErr)
 		}
-		accountInfo = selectAccount(ctx, accountsOutput, promptSelector)
+		accountInfo, err = terminal.SelectAccount(accountsOutput)
+		if err != nil {
+			logger.Fatal().Msgf("Encountered error in selectAccount: %v", err)
+		}
 		inputs.AccountID = *accountInfo.AccountId
 	}
 
+	var roleInfo *types.RoleInfo
 	if len(inputs.RoleName) == 0 {
-		listRolesOutput, err := s.listAvailableRoles(ctx, inputs.AccountID, clientInformation.AccessToken)
-		if err != nil {
-			logger.Fatal().Msgf("Encountered error in ListAvailableRoles: %v", err)
+		listRolesOutput, larErr := s.listAvailableRoles(ctx, inputs.AccountID, clientInformation.AccessToken)
+		if larErr != nil {
+			logger.Fatal().Msgf("Encountered error in listAvailableRoles: %v", larErr)
 		}
-		roleInfo := selectRole(ctx, listRolesOutput, promptSelector)
+		roleInfo, err = terminal.SelectRole(listRolesOutput)
+		if err != nil {
+			logger.Fatal().Msgf("Encountered error in selectRole: %v", err)
+		}
 		inputs.RoleName = *roleInfo.RoleName
 	}
 
@@ -68,7 +74,7 @@ func Login(ctx context.Context, o *OIDCClientAPI, s *Client, inputs LoginFlagInp
 
 	roleCredentials, err := s.getRolesCredentials(ctx, inputs.AccountID, inputs.RoleName, clientInformation.AccessToken)
 	if err != nil {
-		logger.Fatal().Msgf("Encountered error attempting to GetRoleCredentials: %v", err)
+		logger.Fatal().Msgf("Encountered error attempting to getRoleCredentials: %v", err)
 	}
 
 	// does not write to file because folks just want environment variables
