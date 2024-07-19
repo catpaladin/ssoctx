@@ -1,5 +1,4 @@
-// Package aws contains all the aws logic
-package aws
+package amazon
 
 import (
 	"context"
@@ -25,38 +24,37 @@ func NewSSOClient(s SSOClient) *Client {
 	return &Client{client: s}
 }
 
-// ListAvailableRoles is used to return a ListAccountRolesOutput
-func (c *Client) ListAvailableRoles(ctx context.Context, accountID, accessToken string) *sso.ListAccountRolesOutput {
+// listAvailableRoles is used to return a ListAccountRolesOutput
+func (c *Client) listAvailableRoles(ctx context.Context, accountID, accessToken string) (*sso.ListAccountRolesOutput, error) {
 	logger := zerolog.Ctx(ctx)
 	lari := &sso.ListAccountRolesInput{AccountId: &accountID, AccessToken: &accessToken}
 	roles, err := c.client.ListAccountRoles(ctx, lari)
 	if err != nil {
 		// pass through for debug
 		_ = GetAWSErrorCode(ctx, err)
-		logger.Error().Err(err)
+		return &sso.ListAccountRolesOutput{}, err
 	}
 	logger.Debug().Msgf("ListAccountRoles returned %d available roles", len(roles.RoleList))
 
-	return roles
+	return roles, nil
 }
 
-// ListAccounts is used to return the ListAccountsOutput
-func (c *Client) ListAccounts(ctx context.Context, accessToken string) *sso.ListAccountsOutput {
-	logger := zerolog.Ctx(ctx)
+// listAccounts is used to return the ListAccountsOutput
+func (c *Client) listAccounts(ctx context.Context, accessToken string) (*sso.ListAccountsOutput, error) {
 	var maxSize int32 = 500
 	lai := sso.ListAccountsInput{AccessToken: &accessToken, MaxResults: &maxSize}
 	accounts, err := c.client.ListAccounts(ctx, &lai)
 	if err != nil {
 		// pass through for debug
 		_ = GetAWSErrorCode(ctx, err)
-		logger.Error().Err(err)
+		return &sso.ListAccountsOutput{}, err
 	}
 
-	return accounts
+	return accounts, nil
 }
 
-// GetRolesCredentials is used
-func (c *Client) GetRolesCredentials(ctx context.Context, accountID, roleName, accessToken string) (*sso.GetRoleCredentialsOutput, error) {
+// getRolesCredentials is used to return the GetRoleCredentialsOutput
+func (c *Client) getRolesCredentials(ctx context.Context, accountID, roleName, accessToken string) (*sso.GetRoleCredentialsOutput, error) {
 	rci := &sso.GetRoleCredentialsInput{AccountId: &accountID, RoleName: &roleName, AccessToken: &accessToken}
 	roleCredentials, err := c.client.GetRoleCredentials(ctx, rci)
 	if err != nil {

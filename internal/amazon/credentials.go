@@ -1,5 +1,4 @@
-// Package file contains needed functionality for config and files
-package file
+package amazon
 
 import (
 	"context"
@@ -8,21 +7,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
-
-	"aws-sso-util/internal/info"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/rs/zerolog"
-	"gopkg.in/ini.v1"
+	ini "gopkg.in/ini.v1"
 )
 
-// CredentialsFilePath is used to store the credentials path to variable
-var CredentialsFilePath, _ = GetCredentialsFilePath()
+// credentialsFilePath is used to store the credentials path to variable
+var credentialsFilePath = getCredentialsFilePath()
 
 // CredentialsTemplate is what is expected in the ini file
 type CredentialsTemplate struct {
-	AwsAccessKeyId     string `ini:"aws_access_key_id,omitempty"`
+	AwsAccessKeyID     string `ini:"aws_access_key_id,omitempty"`
 	AwsSecretAccessKey string `ini:"aws_secret_access_key,omitempty"`
 	AwsSessionToken    string `ini:"aws_session_token,omitempty"`
 	CredentialProcess  string `ini:"credential_process,omitempty"`
@@ -30,21 +27,22 @@ type CredentialsTemplate struct {
 	Region             string `ini:"region,omitempty"`
 }
 
-// GetPersistedCredentials returns a struct containing persisted creds values
-func GetPersistedCredentials(creds *sso.GetRoleCredentialsOutput, region string) CredentialsTemplate {
+// getPersistedCredentials returns a struct containing persisted creds values
+func getPersistedCredentials(creds *sso.GetRoleCredentialsOutput, region string) CredentialsTemplate {
 	return CredentialsTemplate{
-		AwsAccessKeyId:     *creds.RoleCredentials.AccessKeyId,
+		AwsAccessKeyID:     *creds.RoleCredentials.AccessKeyId,
 		AwsSecretAccessKey: *creds.RoleCredentials.SecretAccessKey,
 		AwsSessionToken:    *creds.RoleCredentials.SessionToken,
 		Region:             region,
 	}
 }
 
-// GetCredentialProcess returns a struct containing credential process values
-func GetCredentialProcess(accountID, roleName, region, startURL string) CredentialsTemplate {
+// getCredentialProcess returns a struct containing credential process values
+func getCredentialProcess(accountID, roleName, region, startURL string) CredentialsTemplate {
 	return CredentialsTemplate{
 		CredentialProcess: fmt.Sprintf(
-			"aws-sso-util assume -a %s -n %s -u %s",
+			"%s assume -a %s -n %s -u %s",
+			ProjectFileName,
 			accountID,
 			roleName,
 			startURL,
@@ -53,47 +51,38 @@ func GetCredentialProcess(accountID, roleName, region, startURL string) Credenti
 	}
 }
 
-// GetCredentialsFilePath returns the credentials path
-func GetCredentialsFilePath() (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("Encountered error in getting users home directory: %q", err)
-	}
-	if runtime.GOOS == "windows" {
-		return fmt.Sprintf("%s\\.aws\\credentials", homeDir), nil
-	}
-	return fmt.Sprintf("%s/.aws/credentials", homeDir), nil
+// getCredentialsFilePath returns the credentials path
+func getCredentialsFilePath() string {
+	homeDir, _ := os.UserHomeDir()
+	return filepath.Join(homeDir, ".aws", "credentials")
 }
 
-// ClientInfoFileDestination returns the path to cached access
-func ClientInfoFileDestination() (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("Encountered error in getting users home directory: %q", err)
+// clientInfoFileDestination returns the path to cached access
+func clientInfoFileDestination(startURL string) string {
+	homeDir, _ := os.UserHomeDir()
+	if strings.Contains(startURL, "legacy") {
+		return filepath.Join(homeDir, ".aws", "sso", "cache", "legacy-access-token.json")
 	}
-	switch runtime.GOOS {
-	case "windows":
-		return fmt.Sprintf("%s\\.aws\\sso\\cache\\access-token.json", homeDir), nil
-	default:
-		return fmt.Sprintf("%s/.aws/sso/cache/access-token.json", homeDir), nil
+	if strings.Contains(startURL, "dev") {
+		return filepath.Join(homeDir, ".aws", "sso", "cache", "dev-access-token.json")
 	}
+	return filepath.Join(homeDir, ".aws", "sso", "cache", "access-token.json")
 }
 
-// WriteAWSCredentialsFile is used to write the template to credentials
-func WriteAWSCredentialsFile(ctx context.Context, template *CredentialsTemplate, profile string) {
-	if !isFileOrFolderExisting(ctx, CredentialsFilePath) {
+// writeAWSCredentialsFile is used to write the template to credentials
+func writeAWSCredentialsFile(ctx context.Context, template *CredentialsTemplate, profile string) {
+	if !exists(ctx, credentialsFilePath) {
 		createCredentialsFile(ctx)
 	}
 	// Write to ini file
 	writeTemplateToFile(ctx, template, profile)
 }
 
-// ReadClientInformation is used to read file for ClientInformation
-func ReadClientInformation(ctx context.Context, file string) (info.ClientInformation, error) {
+// readClientInformation is used to read file for ClientInformation
+func readClientInformation(ctx context.Context, destination string) (ClientInformation, error) {
 	logger := zerolog.Ctx(ctx)
-	if isFileOrFolderExisting(ctx, file) {
-		clientInformation := info.ClientInformation{}
-		destination, _ := ClientInfoFileDestination()
+	if exists(ctx, destination) {
+		clientInformation := ClientInformation{}
 		content, _ := os.ReadFile(destination)
 		err := json.Unmarshal(content, &clientInformation)
 		if err != nil {
@@ -101,14 +90,14 @@ func ReadClientInformation(ctx context.Context, file string) (info.ClientInforma
 		}
 		return clientInformation, nil
 	}
-	return info.ClientInformation{}, errors.New("No ClientInformation exists")
+	return ClientInformation{}, errors.New("No ClientInformation exists")
 }
 
-// WriteStructToFile is used to write the payload to file
-func WriteStructToFile(ctx context.Context, payload interface{}, dest string) {
+// writeStructToFile is used to write the payload to file
+func writeStructToFile(ctx context.Context, payload interface{}, dest string) {
 	logger := zerolog.Ctx(ctx)
 	targetDir := filepath.Dir(dest)
-	if !isFileOrFolderExisting(ctx, targetDir) {
+	if !exists(ctx, targetDir) {
 		if err := os.MkdirAll(targetDir, 0o755); err != nil {
 			logger.Fatal().Msgf("Encountered error in making dir: %q", err)
 		}
@@ -122,28 +111,28 @@ func WriteStructToFile(ctx context.Context, payload interface{}, dest string) {
 	}
 }
 
-// isFileOrFolderExisting checks either or not a target file is existing.
+// exists checks either or not a target file is existing.
 // Returns true if the target exists, otherwise false.
-func isFileOrFolderExisting(ctx context.Context, target string) bool {
+func exists(ctx context.Context, target string) bool {
 	logger := zerolog.Ctx(ctx)
 	if _, err := os.Stat(target); err == nil {
 		return true
 	} else if os.IsNotExist(err) {
 		return false
 	}
-	logger.Panic().Msgf("Could not determine if file or folder %q exists or not. Exiting.", target)
+	logger.Debug().Msgf("Could not determine if file or folder %q exists or not. Assuming not.", target)
 	return false
 }
 
 // createCredentialsFile is used to create missing directories and file
 func createCredentialsFile(ctx context.Context) {
 	logger := zerolog.Ctx(ctx)
-	dir := filepath.Dir(CredentialsFilePath)
+	dir := filepath.Dir(credentialsFilePath)
 	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
 		logger.Fatal().Msgf("Encountered error in making dir: %q", err)
 	}
-	f, err := os.OpenFile(CredentialsFilePath, os.O_CREATE, 0o644)
+	f, err := os.OpenFile(credentialsFilePath, os.O_CREATE, 0o644)
 	if err != nil {
 		logger.Fatal().Msgf("Encountered error opening file: %q", err)
 	}
@@ -155,13 +144,13 @@ func createCredentialsFile(ctx context.Context) {
 // it then saves the changes over the credentials file.
 func writeTemplateToFile(ctx context.Context, template *CredentialsTemplate, profile string) {
 	logger := zerolog.Ctx(ctx)
-	creds, err := ini.Load(CredentialsFilePath)
+	creds, err := ini.Load(credentialsFilePath)
 	if err != nil {
 		logger.Fatal().Msgf("Encountered error loading credentials file: %q", err)
 	}
 
 	replaceProfile(ctx, creds, template, profile)
-	if err := creds.SaveTo(CredentialsFilePath); err != nil {
+	if err := creds.SaveTo(credentialsFilePath); err != nil {
 		logger.Fatal().Msgf("Encountered error saving credentials: %q", err)
 	}
 }

@@ -1,5 +1,4 @@
-// Package info contains client info
-package info
+package amazon
 
 import (
 	"context"
@@ -28,7 +27,7 @@ func TestClientInformation_IsExpired(t *testing.T) {
 		want   bool
 	}{
 		{
-			name: "IsExpired",
+			name: "Is Expired",
 			fields: fields{
 				AccessTokenExpiresAt: time.Now().Add(-dur),
 			},
@@ -36,7 +35,7 @@ func TestClientInformation_IsExpired(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "IsNotExpired",
+			name: "Is Not Expired",
 			fields: fields{
 				AccessTokenExpiresAt: time.Now().Add(dur),
 			},
@@ -56,8 +55,8 @@ func TestClientInformation_IsExpired(t *testing.T) {
 				VerificationURIComplete: tt.fields.VerificationURIComplete,
 				StartURL:                tt.fields.StartURL,
 			}
-			if got := ati.IsExpired(tt.ctx); got != tt.want {
-				t.Errorf("ClientInformation.IsExpired() = %v, want %v", got, tt.want)
+			if got := ati.isExpired(tt.ctx); got != tt.want {
+				t.Errorf("ClientInformation.isExpired() = %v, want %v", got, tt.want)
 			}
 		})
 	}

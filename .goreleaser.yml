@@ -1,5 +1,9 @@
 builds:
-  - binary: aws-sso-util
+  - id: ssoctx
+    main: ./cmd/ssoctx
+    binary: ssoctx
+    ldflags:
+      - -s -w -X main.VERSION={{ .Version }} -X main.commit={{.Commit}}
     goos:
       - darwin
       - linux
@@ -15,17 +19,6 @@ release:
 
 universal_binaries:
   - replace: true
-
-brews:
-  - tap:
-      owner: catpaladin
-      name: aws-sso-util
-    download_strategy: GitHubPrivateRepositoryReleaseDownloadStrategy
-    custom_require: "lib/custom_download_strategy"
-    commit_author:
-      name: catpaladin
-      email: mjsahari@gmail.com
-    folder: HomebrewFormula
 
 checksum:
   name_template: 'checksums.txt'

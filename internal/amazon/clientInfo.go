@@ -1,5 +1,4 @@
-// Package info contains client info
-package info
+package amazon
 
 import (
 	"context"
@@ -20,8 +19,8 @@ type ClientInformation struct {
 	StartURL                string
 }
 
-// IsExpired is used to tell if AccessToken is expired in client information
-func (ati ClientInformation) IsExpired(ctx context.Context) bool {
+// isExpired is used to tell if AccessToken is expired in client information
+func (ati ClientInformation) isExpired(ctx context.Context) bool {
 	logger := zerolog.Ctx(ctx)
 	logger.Debug().Msgf("ClientInformation time: %v", ati.AccessTokenExpiresAt)
 	logger.Debug().Msgf("Time now: %v", time.Now())

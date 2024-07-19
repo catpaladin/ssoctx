@@ -6,19 +6,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
-
-	"aws-sso-util/internal/prompt"
 
 	"github.com/rs/zerolog"
 	"gopkg.in/yaml.v2"
+
+	"ssoctx/internal/prompt"
 )
 
 const (
-	// UserConfigFilePath is the file path under User's config path
-	UserConfigFilePath string = "/aws-sso-util"
-	// WindowsConfigPath is where windows will store User's config path
-	WindowsConfigPath string = "\\aws-sso-util"
+	// ProjectFileName is the name of built binary
+	ProjectFileName string = "ssoctx"
 )
 
 // AppConfig is used to save yaml config
@@ -27,22 +24,19 @@ type AppConfig struct {
 	Region   string `yaml:"region"`
 }
 
-// ConfigFilePath is the default config path
-func ConfigFilePath(ctx context.Context) string {
+// GetConfigFilePath is the default config path
+func GetConfigFilePath(ctx context.Context) string {
 	logger := zerolog.Ctx(ctx)
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		logger.Fatal().Msgf("Encountered error finding user config dir: %q", err)
 	}
-	if runtime.GOOS == "windows" {
-		return fmt.Sprintf("%s%s\\config.yml", configDir, WindowsConfigPath)
-	}
-	return fmt.Sprintf("%s%s/config.yml", configDir, UserConfigFilePath)
+	return filepath.Join(configDir, ProjectFileName, "config.yml")
 }
 
 // GetConfigs reads the config and sets values.
 func GetConfigs(ctx context.Context, startURL, region *string) {
-	conf := ReadConfig(ctx, ConfigFilePath(ctx))
+	conf := ReadConfig(ctx, GetConfigFilePath(ctx))
 	if len(*startURL) == 0 {
 		*startURL = conf.StartURL
 	}
@@ -67,32 +61,32 @@ func ReadConfig(ctx context.Context, filePath string) *AppConfig {
 	return &appConfig
 }
 
-// GenerateConfigAction is used to generate a config yaml
-func GenerateConfigAction(ctx context.Context) error {
+// GenerateConfig is used to generate a config yaml
+func GenerateConfig(ctx context.Context) error {
 	prompter := prompt.Prompter{}
-	startURL := prompt.PromptStartURL(prompter, "")
-	region := prompt.PromptRegion(prompter)
+	startURL := prompter.Enter("SSO Start URL", "")
+	region := prompt.GetRegion(prompter)
 	appConfig := AppConfig{
 		StartURL: startURL,
 		Region:   region,
 	}
 
-	configFile := ConfigFilePath(ctx)
+	configFile := GetConfigFilePath(ctx)
 	if err := writeConfig(ctx, configFile, appConfig); err != nil {
 		return fmt.Errorf("Encountered error at GenerateConfigAction: %w", err)
 	}
 	return nil
 }
 
-// EditConfigAction is used to edit the generated config yaml
-func EditConfigAction(ctx context.Context) error {
-	config := ReadConfig(ctx, ConfigFilePath(ctx))
+// EditConfig is used to edit the generated config yaml
+func EditConfig(ctx context.Context) error {
+	config := ReadConfig(ctx, GetConfigFilePath(ctx))
 
 	prompter := prompt.Prompter{}
-	config.StartURL = prompt.PromptStartURL(prompter, config.StartURL)
-	config.Region = prompt.PromptRegion(prompter)
+	config.StartURL = prompter.Enter("SSO Start URL", config.StartURL)
+	config.Region = prompt.GetRegion(prompter)
 
-	if err := writeConfig(ctx, ConfigFilePath(ctx), *config); err != nil {
+	if err := writeConfig(ctx, GetConfigFilePath(ctx), *config); err != nil {
 		return fmt.Errorf("Encountered error at EditConfigAction: %w", err)
 	}
 	return nil

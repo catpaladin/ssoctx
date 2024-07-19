@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"fmt"
@@ -10,10 +10,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// ConfigureLogger sets globals and returns a logger
-func ConfigureLogger() zerolog.Logger {
+// configureLogger sets globals and returns a logger
+func configureLogger(debug, jsonFormat bool) zerolog.Logger {
 	// set default time
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.TimeFieldFormat = zerolog.TimestampFunc().Format(time.RFC3339)
 
 	// default info level
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)

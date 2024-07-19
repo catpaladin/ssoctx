@@ -1,4 +1,4 @@
-// Package prompt contains functionality for terminal prompt and search
+// Package prompt contains all prompt functionality
 package prompt
 
 import "github.com/chzyer/readline"
@@ -16,7 +16,7 @@ func (s *silentStdout) Write(b []byte) (int, error) {
 	return readline.Stdout.Write(b)
 }
 
-// Close cloes the stdout
+// Close closes the stdout
 func (s *silentStdout) Close() error {
 	return readline.Stdout.Close()
 }

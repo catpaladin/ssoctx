@@ -1,2 +1,3 @@
-aws-sso-util
+ssoctx
+!cmd/ssoctx
 coverage.out

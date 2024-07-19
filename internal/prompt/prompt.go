@@ -1,29 +1,24 @@
-// Package prompt contains functionality for terminal prompt and search
+// Package prompt contains all prompt functionality
 package prompt
 
 import (
-	"context"
-	"strings"
+	"log"
 
 	"github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/manifoldco/promptui"
-	"github.com/rs/zerolog"
 )
 
-// Prompt is used to interface with promptui
-type Prompt interface {
+// Input is used to interface with promptui
+type Input interface {
 	Select(label string, toSelect []string, searcher func(input string, index int) bool) (index int, value string)
-	Prompt(label string, dfault string) string
+	Enter(label string, dfault string) string
 }
 
 // Prompter is used to interface promptui
-type Prompter struct {
-	Ctx context.Context // context to pass in logger
-}
+type Prompter struct{}
 
 // Select is used to select from the prompt
 func (p Prompter) Select(label string, toSelect []string, searcher func(input string, index int) bool) (int, string) {
-	logger := zerolog.Ctx(p.Ctx)
 	prompt := promptui.Select{
 		Label:             label,
 		Items:             toSelect,
@@ -34,14 +29,13 @@ func (p Prompter) Select(label string, toSelect []string, searcher func(input st
 	}
 	index, value, err := prompt.Run()
 	if err != nil {
-		logger.Fatal().Msgf("Error in prompt: %q", err)
+		log.Fatalf("Error in prompt: %q", err)
 	}
 	return index, value
 }
 
-// Prompt is used to pop open a selectable prompt
-func (p Prompter) Prompt(label string, dfault string) string {
-	logger := zerolog.Ctx(p.Ctx)
+// Enter is used to pop open a selectable prompt
+func (p Prompter) Enter(label string, dfault string) string {
 	prompt := promptui.Prompt{
 		Label:     label,
 		Default:   dfault,
@@ -49,22 +43,41 @@ func (p Prompter) Prompt(label string, dfault string) string {
 	}
 	val, err := prompt.Run()
 	if err != nil {
-		logger.Fatal().Msgf("Error in prompt: %q", err)
+		log.Fatalf("Error in prompt: %q", err)
 	}
 	return val
 }
 
-func fuzzySearchWithPrefixAnchor(itemsToSelect []string, linePrefix string) func(input string, index int) bool {
-	return func(input string, index int) bool {
-		role := itemsToSelect[index]
+// AwsRegions contains selectable regions
+var AwsRegions = []string{
+	"us-east-2",
+	"us-east-1",
+	"us-west-1",
+	"us-west-2",
+	"af-south-1",
+	"ap-east-1",
+	"ap-south-1",
+	"ap-northeast-3",
+	"ap-northeast-2",
+	"ap-southeast-1",
+	"ap-southeast-2",
+	"ap-northeast-1",
+	"ca-central-1",
+	"eu-central-1",
+	"eu-west-1",
+	"eu-west-2",
+	"eu-south-1",
+	"eu-west-3",
+	"eu-north-1",
+	"me-south-1",
+	"sa-east-1",
+}
 
-		if strings.HasPrefix(input, linePrefix) {
-			return strings.HasPrefix(role, input)
-		}
-
-		if fuzzy.MatchFold(input, role) {
-			return true
-		}
-		return false
-	}
+// GetRegion is used to setup a prompt for region
+func GetRegion(prompt Input) string {
+	_, region := prompt.Select("Select your AWS Region", AwsRegions, func(input string, index int) bool {
+		target := AwsRegions[index]
+		return fuzzy.MatchFold(input, target)
+	})
+	return region
 }

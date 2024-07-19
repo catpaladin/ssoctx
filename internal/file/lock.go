@@ -1,4 +1,4 @@
-// Package file contains needed functionality for config and files
+// Package file contains all file and os logic
 package file
 
 import (
@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"runtime"
+	"path/filepath"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -19,12 +19,7 @@ type lockFile struct {
 
 // LockPath returns the full path to expected lock file
 func LockPath() string {
-	switch runtime.GOOS {
-	case "windows":
-		return fmt.Sprintf("%s\\aws-sso-util.lock", os.TempDir())
-	default:
-		return fmt.Sprintf("%s/aws-sso-util.lock", os.TempDir())
-	}
+	return filepath.Join(os.TempDir(), fmt.Sprintf("%s.lock", ProjectFileName))
 }
 
 // AddLock creates a lock file
@@ -45,13 +40,13 @@ func AddLock(ctx context.Context) {
 func RemoveLock(ctx context.Context) {
 	logger := zerolog.Ctx(ctx)
 	if err := os.Remove(LockPath()); err != nil {
-		logger.Panic().Msgf("Encountered error removing temp lock file: %q", err)
+		logger.Fatal().Msgf("Encountered error removing temp lock file: %q", err)
 	}
 }
 
-// LockStatus is used to lock a concurrent flow.
+// IsLocked is used to lock a concurrent flow.
 // e.g. Use to wrap authorization so ProcessClientInformation does not open a bunch of tabs
-func LockStatus(ctx context.Context) bool {
+func IsLocked(ctx context.Context) bool {
 	logger := zerolog.Ctx(ctx)
 
 	var pathNotFound *os.PathError
@@ -66,7 +61,7 @@ func LockStatus(ctx context.Context) bool {
 
 	lock := lockFile{}
 	if err := json.Unmarshal(lb, &lock); err != nil {
-		logger.Panic().Msgf("Encountered error while unmarshal of temp lock file: %q", err)
+		logger.Fatal().Msgf("Encountered error while unmarshal of temp lock file: %q", err)
 		return false
 	}
 
