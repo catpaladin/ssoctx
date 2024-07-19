@@ -1,5 +1,7 @@
 # `ssoctx`: AWS SSO context switcher
 
+[![Go Test Status](https://github.com/catpaladin/ssoctx/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/catapaladin/ssoctx/actions/workflows/test.yml)
+
 Easily set and change AWS SSO context.
 
 # Installation
