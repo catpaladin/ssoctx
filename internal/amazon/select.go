@@ -12,8 +12,8 @@ import (
 	"ssoctx/internal/terminal"
 )
 
-// LoginFlagInputs contains all needed inputs for Login
-type LoginFlagInputs struct {
+// SelectFlagInputs contains all needed inputs for login to select account and role
+type SelectFlagInputs struct {
 	Clean      bool   // flag associated for clean
 	AccountID  string // flag input from login
 	RoleName   string // flag input from login
@@ -24,8 +24,8 @@ type LoginFlagInputs struct {
 	PrintCreds bool   // flag associated with printing keys
 }
 
-// Login is the primary subcommand used to interactively login
-func Login(ctx context.Context, o *OIDCClientAPI, s *Client, inputs LoginFlagInputs) {
+// Select is the primary subcommand used to interactively select account and role
+func Select(ctx context.Context, o *OIDCClientAPI, s *Client, inputs SelectFlagInputs) {
 	logger := zerolog.Ctx(ctx)
 	destination := clientInfoFileDestination(inputs.StartURL)
 
