@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/rs/zerolog"
@@ -60,12 +59,6 @@ func getCredentialsFilePath() string {
 // clientInfoFileDestination returns the path to cached access
 func clientInfoFileDestination(startURL string) string {
 	homeDir, _ := os.UserHomeDir()
-	if strings.Contains(startURL, "legacy") {
-		return filepath.Join(homeDir, ".aws", "sso", "cache", "legacy-access-token.json")
-	}
-	if strings.Contains(startURL, "dev") {
-		return filepath.Join(homeDir, ".aws", "sso", "cache", "dev-access-token.json")
-	}
 	return filepath.Join(homeDir, ".aws", "sso", "cache", "access-token.json")
 }
 
@@ -90,7 +83,7 @@ func readClientInformation(ctx context.Context, destination string) (ClientInfor
 		}
 		return clientInformation, nil
 	}
-	return ClientInformation{}, errors.New("No ClientInformation exists")
+	return ClientInformation{}, errors.New("no ClientInformation exists")
 }
 
 // writeStructToFile is used to write the payload to file

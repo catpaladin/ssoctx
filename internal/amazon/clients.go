@@ -7,7 +7,7 @@ import (
 )
 
 // NewClients is used to return sso and ssooidc clients
-func NewClients(cfg aws.Config) (*ssooidc.Client, *sso.Client) {
+func NewClients(cfg aws.Config) (OIDCClient, SSOClient) {
 	oidcClient := ssooidc.NewFromConfig(cfg)
 	ssoClient := sso.NewFromConfig(cfg)
 
