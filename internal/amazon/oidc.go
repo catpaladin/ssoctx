@@ -138,12 +138,7 @@ func (o *OIDCClientAPI) startDeviceAuthorization(ctx context.Context, rco *ssooi
 func (o *OIDCClientAPI) retrieveToken(ctx context.Context, info *ClientInformation) (*ClientInformation, error) {
 	input := generateCreateTokenInput(info)
 
-	var cto *ssooidc.CreateTokenOutput
-	var err error
-	action = func() {
-		cto, err = o.createToken(ctx, &input)
-	}
-	terminal.NewSpinner("Waiting on authorization..", action)
+	cto, err := o.createToken(ctx, &input)
 	if err != nil {
 		return info, err
 	}
@@ -160,13 +155,16 @@ func (o *OIDCClientAPI) createToken(ctx context.Context, input *ssooidc.CreateTo
 		if err != nil {
 			awsErrCode := GetAWSErrorCode(ctx, err)
 			if awsErrCode == "AuthorizationPendingException" {
-				time.Sleep(5 * time.Second)
+				action = func() {
+					time.Sleep(5 * time.Second)
+				}
+				terminal.NewSpinner("Waiting on authorization..", action)
 				continue
 			}
 		}
 		return cto, nil
 	}
-	return &ssooidc.CreateTokenOutput{}, errors.New("Encountered timeout in createToken")
+	return &ssooidc.CreateTokenOutput{}, errors.New("encountered timeout in createToken")
 }
 
 // generateCreateTokenInput is used to create a CreateTokenInput

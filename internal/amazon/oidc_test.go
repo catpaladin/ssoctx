@@ -192,22 +192,13 @@ func TestOIDCClientAPI_retrieveToken(t *testing.T) {
 				DeviceCode: "1234-5678",
 			},
 			wantErr: true,
-			errResp: "Encountered timeout in createToken",
+			errResp: "encountered timeout in createToken",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			createTokenTimeout = 1 * time.Second
 			o := NewOIDCClient(tt.client, tt.url)
-			input := generateCreateTokenInput(tt.info)
-
-			// override action to pass mock
-			var cto *ssooidc.CreateTokenOutput
-			var err error
-			action = func() {
-				cto, err = o.createToken(zerologTestingContext, &input)
-			}
-			fmt.Print(cto) // for testing
 			got, err := o.retrieveToken(zerologTestingContext, tt.info)
 			if !reflect.DeepEqual(got.AccessToken, tt.want.AccessToken) {
 				t.Errorf("OIDCClientAPI.retrieveToken() got.AccessToken = %v, want.AccessToken %v", got.AccessToken, tt.want.AccessToken)
@@ -405,7 +396,7 @@ func TestOIDCClientAPI_getClientInfoPointer(t *testing.T) {
 			url:     url,
 			want:    &ClientInformation{},
 			wantErr: true,
-			errResp: "Encountered timeout in createToken",
+			errResp: "encountered timeout in createToken",
 		},
 	}
 	for _, tt := range tests {
