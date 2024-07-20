@@ -199,6 +199,15 @@ func TestOIDCClientAPI_retrieveToken(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			createTokenTimeout = 1 * time.Second
 			o := NewOIDCClient(tt.client, tt.url)
+			input := generateCreateTokenInput(tt.info)
+
+			// override action to pass mock
+			var cto *ssooidc.CreateTokenOutput
+			var err error
+			action = func() {
+				cto, err = o.createToken(zerologTestingContext, &input)
+			}
+			fmt.Print(cto) // for testing
 			got, err := o.retrieveToken(zerologTestingContext, tt.info)
 			if !reflect.DeepEqual(got.AccessToken, tt.want.AccessToken) {
 				t.Errorf("OIDCClientAPI.retrieveToken() got.AccessToken = %v, want.AccessToken %v", got.AccessToken, tt.want.AccessToken)

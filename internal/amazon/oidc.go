@@ -19,6 +19,8 @@ import (
 var (
 	createTokenTimeout = 300 * time.Second
 	execCmd            = exec.Command
+
+	action func()
 )
 
 // OIDCClient is used to abstract the client calls for mock testing
@@ -138,7 +140,7 @@ func (o *OIDCClientAPI) retrieveToken(ctx context.Context, info *ClientInformati
 
 	var cto *ssooidc.CreateTokenOutput
 	var err error
-	action := func() {
+	action = func() {
 		cto, err = o.createToken(ctx, &input)
 	}
 	terminal.NewSpinner("Waiting on authorization..", action)
