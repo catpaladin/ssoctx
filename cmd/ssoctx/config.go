@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"ssoctx/internal/file"
+	"ssoctx/internal/terminal"
 )
 
 var (
@@ -22,7 +23,14 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			logger := configureLogger(debug, jsonFormat)
 			ctx = logger.WithContext(ctx)
-			if err := file.GenerateConfig(ctx); err != nil {
+
+			var err error
+			startURL, err = terminal.NewInputForm("SSO Start URL")
+			if err != nil {
+				logger.Fatal().Err(err)
+			}
+			region = terminal.SelectRegion()
+			if err := file.GenerateConfig(ctx, startURL, region); err != nil {
 				logger.Fatal().Err(err)
 			}
 		},
@@ -36,7 +44,14 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			logger := configureLogger(debug, jsonFormat)
 			ctx = logger.WithContext(ctx)
-			if err := file.EditConfig(ctx); err != nil {
+
+			var err error
+			startURL, err = terminal.NewInputForm("SSO Start URL")
+			if err != nil {
+				logger.Fatal().Err(err)
+			}
+			region = terminal.SelectRegion()
+			if err := file.EditConfig(ctx, startURL, region); err != nil {
 				logger.Fatal().Err(err)
 			}
 		},

@@ -17,9 +17,38 @@ type lockFile struct {
 	Time time.Time `json:"Time"`
 }
 
+// FileSystem is an interface for file operations
+type FileSystem interface {
+	WriteFile(name string, data []byte, perm os.FileMode) error
+	ReadFile(name string) ([]byte, error)
+	Remove(name string) error
+}
+
+// RealFileSystem implements FileSystem using actual OS calls
+type RealFileSystem struct{}
+
+func (RealFileSystem) WriteFile(name string, data []byte, perm os.FileMode) error {
+	return os.WriteFile(name, data, perm)
+}
+
+func (RealFileSystem) ReadFile(name string) ([]byte, error) {
+	return os.ReadFile(name)
+}
+
+func (RealFileSystem) Remove(name string) error {
+	return os.Remove(name)
+}
+
+var fs FileSystem = RealFileSystem{}
+
+// SetFileSystem allows setting a custom FileSystem implementation
+func SetFileSystem(fileSystem FileSystem) {
+	fs = fileSystem
+}
+
 // LockPath returns the full path to expected lock file
 func LockPath() string {
-	return filepath.Join(os.TempDir(), fmt.Sprintf("%s.lock", ProjectFileName))
+	return filepath.Join(os.TempDir(), fmt.Sprintf("%s.lock", projectFileName))
 }
 
 // AddLock creates a lock file
@@ -31,7 +60,7 @@ func AddLock(ctx context.Context) {
 		logger.Fatal().Msgf("Encountered error with marshal of temp lock file: %q", err)
 	}
 
-	if err := os.WriteFile(LockPath(), lb, 0o644); err != nil {
+	if err := fs.WriteFile(LockPath(), lb, 0o644); err != nil {
 		logger.Fatal().Msgf("Encountered error writing temp lock file: %q", err)
 	}
 }
@@ -39,19 +68,18 @@ func AddLock(ctx context.Context) {
 // RemoveLock removes a lock file
 func RemoveLock(ctx context.Context) {
 	logger := zerolog.Ctx(ctx)
-	if err := os.Remove(LockPath()); err != nil {
+	if err := fs.Remove(LockPath()); err != nil {
 		logger.Fatal().Msgf("Encountered error removing temp lock file: %q", err)
 	}
 }
 
 // IsLocked is used to lock a concurrent flow.
-// e.g. Use to wrap authorization so ProcessClientInformation does not open a bunch of tabs
 func IsLocked(ctx context.Context) bool {
 	logger := zerolog.Ctx(ctx)
 
 	var pathNotFound *os.PathError
 
-	lb, err := os.ReadFile(LockPath())
+	lb, err := fs.ReadFile(LockPath())
 	if err != nil {
 		if errors.As(err, &pathNotFound) {
 			return false
