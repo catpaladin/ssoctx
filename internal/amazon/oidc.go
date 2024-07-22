@@ -53,7 +53,7 @@ func (o *OIDCClientAPI) processClientInformation(ctx context.Context, fileDestin
 
 	// check for running authorization process by file lock
 	if file.IsLocked(ctx) {
-		return ClientInformation{}, fmt.Errorf("There is already an authorization process running. Please end any concurrent authorizations or run: %s login --clean", ProjectFileName)
+		return ClientInformation{}, fmt.Errorf("There is already an authorization process running. Please end any concurrent authorizations or run: %s select --clean", ProjectFileName)
 	}
 
 	clientInfo, err := readClientInformation(ctx, fileDestination)
