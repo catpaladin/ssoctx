@@ -29,7 +29,7 @@ var (
 			if err != nil {
 				logger.Fatal().Err(err)
 			}
-			region = terminal.SelectRegion()
+			region = terminal.SelectRegion(terminal.NewSelectForm)
 			if err := file.GenerateConfig(ctx, startURL, region); err != nil {
 				logger.Fatal().Err(err)
 			}
@@ -50,7 +50,7 @@ var (
 			if err != nil {
 				logger.Fatal().Err(err)
 			}
-			region = terminal.SelectRegion()
+			region = terminal.SelectRegion(terminal.NewSelectForm)
 			if err := file.EditConfig(ctx, startURL, region); err != nil {
 				logger.Fatal().Err(err)
 			}

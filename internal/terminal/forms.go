@@ -5,12 +5,18 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/sso/types"
+	"github.com/charmbracelet/huh"
 )
 
-func SelectRegion() string {
+// SelectorFunc is a generic function type for selection
+type SelectorFunc[T comparable] func([]huh.Option[T], string) (T, error)
+
+// SelectRegion allows selecting a region by passing in a SelectorFunc.
+// Pass in a NewSelectForm[string]
+func SelectRegion(selector SelectorFunc[string]) string {
 	label := "Select your region"
 	options := GenerateGenericOptions(awsRegions)
-	selectedRegion, err := NewSelectForm(options, label)
+	selectedRegion, err := selector(options, label)
 	if err != nil {
 		return ""
 	}
@@ -18,14 +24,15 @@ func SelectRegion() string {
 }
 
 // SelectRole is used to return a pointer to the selected Role
-func SelectRole(roles *sso.ListAccountRolesOutput) (*types.RoleInfo, error) {
+// Pass in a NewSelectForm[types.RoleInfo]
+func SelectRole(roles *sso.ListAccountRolesOutput, selector SelectorFunc[types.RoleInfo]) (*types.RoleInfo, error) {
 	if len(roles.RoleList) == 1 {
 		return &roles.RoleList[0], nil
 	}
 
 	label := "Select your role"
 	options := generateRoleInfoOptions(roles.RoleList)
-	selectedRole, err := NewSelectForm(options, label)
+	selectedRole, err := selector(options, label)
 	if err != nil {
 		return &types.RoleInfo{}, err
 	}
@@ -33,11 +40,12 @@ func SelectRole(roles *sso.ListAccountRolesOutput) (*types.RoleInfo, error) {
 }
 
 // SelectAccount is used to return a pointer to the selected Account
-func SelectAccount(accounts *sso.ListAccountsOutput) (*types.AccountInfo, error) {
+// Pass in a NewSelectForm[types.AccountInfo]
+func SelectAccount(accounts *sso.ListAccountsOutput, selector SelectorFunc[types.AccountInfo]) (*types.AccountInfo, error) {
 	label := "Select your account"
 	sortedAccounts := sortAccounts(accounts.AccountList)
 	options := generateAccountInfoOptions(sortedAccounts)
-	selectedAccount, err := NewSelectForm(options, label)
+	selectedAccount, err := selector(options, label)
 	if err != nil {
 		return &types.AccountInfo{}, err
 	}

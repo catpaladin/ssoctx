@@ -39,7 +39,7 @@ func Credentials(ctx context.Context, o *OIDCClientAPI, s *Client, inputs Refres
 		if err != nil {
 			logger.Fatal().Msgf("Encountered error in listAccounts: %v", err)
 		}
-		accountInfo, err := terminal.SelectAccount(accountsOutput)
+		accountInfo, err := terminal.SelectAccount(accountsOutput, terminal.NewSelectForm)
 		if err != nil {
 			logger.Fatal().Msgf("Encountered error in selectAccount: %v", err)
 		}
@@ -51,7 +51,7 @@ func Credentials(ctx context.Context, o *OIDCClientAPI, s *Client, inputs Refres
 		if err != nil {
 			logger.Fatal().Msgf("Encountered error in listAvailableRoles: %v", err)
 		}
-		roleInfo, err := terminal.SelectRole(listRolesOutput)
+		roleInfo, err := terminal.SelectRole(listRolesOutput, terminal.NewSelectForm)
 		if err != nil {
 			logger.Fatal().Msgf("Encountered error in selectRole: %v", err)
 		}
