@@ -38,7 +38,7 @@ var refreshCmd = &cobra.Command{
 			Profile:   profile,
 			StartURL:  startURL,
 			Region:    region,
-			Persist:   persist,
+			Keys:      keys,
 		})
 	},
 }
@@ -48,7 +48,7 @@ func init() {
 	refreshCmd.Flags().StringVarP(&roleName, "role-name", "n", "", "set with permission set role name")
 	refreshCmd.Flags().StringVarP(&accountID, "account-id", "a", "", "set account id for desired aws account")
 	refreshCmd.Flags().StringVarP(&profile, "profile", "p", "default", "the profile name to set in credentials file")
-	refreshCmd.Flags().BoolVarP(&persist, "persist", "", false, "toggle if you want to write short-lived creds to credentials file")
+	refreshCmd.Flags().BoolVarP(&keys, "keys", "", false, "toggle if you want to write access/secret keys to credentials file")
 	refreshCmd.Flags().BoolVarP(&debug, "debug", "", false, "toggle if you want to enable debug logs")
 	refreshCmd.Flags().BoolVarP(&jsonFormat, "json", "", false, "toggle if you want to enable json log output")
 }

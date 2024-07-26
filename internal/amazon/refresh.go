@@ -11,12 +11,12 @@ import (
 
 // RefreshFlagInputs contains all needed inputs for Credentials
 type RefreshFlagInputs struct {
-	AccountID string // flag input from refresh
-	RoleName  string // flag input from refresh
-	StartURL  string // flag input from refresh
-	Region    string // flag input from refresh
-	Profile   string // flag input from refresh
-	Persist   bool   // flag associated with type of credentials
+	AccountID string
+	RoleName  string
+	StartURL  string
+	Region    string
+	Profile   string
+	Keys      bool
 }
 
 // Credentials is used to refresh credentials
@@ -74,7 +74,7 @@ func Credentials(ctx context.Context, o *OIDCClientAPI, s *Client, inputs Refres
 		inputs.StartURL = clientInformation.StartURL
 	}
 
-	if inputs.Persist {
+	if inputs.Keys {
 		template := getPersistedCredentials(roleCredentials, inputs.Region)
 		writeAWSCredentialsFile(ctx, &template, inputs.Profile)
 	} else {

@@ -12,7 +12,7 @@ var (
 	startURL   string // used to store the sso start url
 	region     string // used to store the aws region
 	profile    string // used to store the profile name
-	persist    bool   // used to determine if persist temp creds
+	keys       bool   // used to determine if using creds with access/secret keys
 	roleName   string // used to store permission set name
 	accountID  string // used to store the account id selected
 	clean      bool   // used to clean lock file

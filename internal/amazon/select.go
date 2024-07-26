@@ -14,14 +14,14 @@ import (
 
 // SelectFlagInputs contains all needed inputs for login to select account and role
 type SelectFlagInputs struct {
-	Clean      bool   // flag associated for clean
-	AccountID  string // flag input from login
-	RoleName   string // flag input from login
-	StartURL   string // flag input from login
-	Region     string // flag input from login
-	Profile    string // flag input from login
-	Persist    bool   // flag associated with type of credentials
-	PrintCreds bool   // flag associated with printing keys
+	Clean      bool
+	AccountID  string
+	RoleName   string
+	StartURL   string
+	Region     string
+	Profile    string
+	Keys       bool
+	PrintCreds bool
 }
 
 // Select is the primary subcommand used to interactively select account and role
@@ -83,7 +83,7 @@ func Select(ctx context.Context, o *OIDCClientAPI, s *Client, inputs SelectFlagI
 		return
 	}
 
-	if inputs.Persist {
+	if inputs.Keys {
 		template := getPersistedCredentials(roleCredentials, inputs.Region)
 		writeAWSCredentialsFile(ctx, &template, inputs.Profile)
 		logger.Info().Msgf(

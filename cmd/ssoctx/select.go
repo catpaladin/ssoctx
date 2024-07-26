@@ -37,7 +37,7 @@ var (
 				Profile:    profile,
 				StartURL:   startURL,
 				Region:     region,
-				Persist:    persist,
+				Keys:       keys,
 				Clean:      clean,
 				PrintCreds: printCreds,
 			})
@@ -52,7 +52,7 @@ func init() {
 	selectCmd.Flags().StringVarP(&startURL, "start-url", "u", "", "set / override aws sso url start url")
 	selectCmd.Flags().StringVarP(&region, "region", "r", "", "set / override aws region")
 	selectCmd.Flags().StringVarP(&profile, "profile", "p", "default", "the profile name to set in credentials file")
-	selectCmd.Flags().BoolVarP(&persist, "persist", "", false, "toggle if you want to write short-lived creds to credentials file")
+	selectCmd.Flags().BoolVarP(&keys, "keys", "", false, "toggle if you want to write access/secret keys to credentials file")
 	selectCmd.Flags().BoolVarP(&clean, "clean", "", false, "toggle if you want to remove lock and access token")
 	selectCmd.Flags().BoolVarP(&debug, "debug", "", false, "toggle if you want to enable debug logs")
 	selectCmd.Flags().BoolVarP(&jsonFormat, "json", "", false, "toggle if you want to enable json log output")
