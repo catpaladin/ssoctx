@@ -14,7 +14,27 @@ import (
 )
 
 // credentialsFilePath is used to store the credentials path to variable
-var credentialsFilePath = getCredentialsFilePath()
+// var credentialsFilePath = getCredentialsFilePath()
+var (
+	getCredentialsFilePath    func() string
+	clientInfoFileDestination func(string) string
+)
+
+func getRealCredentialsFilePath() string {
+	homeDir, _ := os.UserHomeDir()
+	return filepath.Join(homeDir, ".aws", "credentials")
+}
+
+func actualClientInfoFileDestination(startURL string) string {
+	homeDir, _ := os.UserHomeDir()
+	return filepath.Join(homeDir, ".aws", "sso", "cache", "access-token.json")
+}
+
+// Initialize function variables with actual implementations
+func init() {
+	getCredentialsFilePath = getRealCredentialsFilePath
+	clientInfoFileDestination = actualClientInfoFileDestination
+}
 
 // CredentialsTemplate is what is expected in the ini file
 type CredentialsTemplate struct {
@@ -50,21 +70,21 @@ func getCredentialProcess(accountID, roleName, region, startURL string) Credenti
 	}
 }
 
-// getCredentialsFilePath returns the credentials path
-func getCredentialsFilePath() string {
-	homeDir, _ := os.UserHomeDir()
-	return filepath.Join(homeDir, ".aws", "credentials")
-}
-
-// clientInfoFileDestination returns the path to cached access
-func clientInfoFileDestination(startURL string) string {
-	homeDir, _ := os.UserHomeDir()
-	return filepath.Join(homeDir, ".aws", "sso", "cache", "access-token.json")
-}
+// // getCredentialsFilePath returns the credentials path
+// func getCredentialsFilePath() string {
+// 	homeDir, _ := os.UserHomeDir()
+// 	return filepath.Join(homeDir, ".aws", "credentials")
+// }
+//
+// // clientInfoFileDestination returns the path to cached access
+// func clientInfoFileDestination(startURL string) string {
+// 	homeDir, _ := os.UserHomeDir()
+// 	return filepath.Join(homeDir, ".aws", "sso", "cache", "access-token.json")
+// }
 
 // writeAWSCredentialsFile is used to write the template to credentials
 func writeAWSCredentialsFile(ctx context.Context, template *CredentialsTemplate, profile string) {
-	if !exists(ctx, credentialsFilePath) {
+	if !exists(ctx, getCredentialsFilePath()) {
 		createCredentialsFile(ctx)
 	}
 	// Write to ini file
@@ -120,12 +140,12 @@ func exists(ctx context.Context, target string) bool {
 // createCredentialsFile is used to create missing directories and file
 func createCredentialsFile(ctx context.Context) {
 	logger := zerolog.Ctx(ctx)
-	dir := filepath.Dir(credentialsFilePath)
+	dir := filepath.Dir(getCredentialsFilePath())
 	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
 		logger.Fatal().Msgf("Encountered error in making dir: %q", err)
 	}
-	f, err := os.OpenFile(credentialsFilePath, os.O_CREATE, 0o644)
+	f, err := os.OpenFile(getCredentialsFilePath(), os.O_CREATE, 0o644)
 	if err != nil {
 		logger.Fatal().Msgf("Encountered error opening file: %q", err)
 	}
@@ -137,13 +157,13 @@ func createCredentialsFile(ctx context.Context) {
 // it then saves the changes over the credentials file.
 func writeTemplateToFile(ctx context.Context, template *CredentialsTemplate, profile string) {
 	logger := zerolog.Ctx(ctx)
-	creds, err := ini.Load(credentialsFilePath)
+	creds, err := ini.Load(getCredentialsFilePath())
 	if err != nil {
 		logger.Fatal().Msgf("Encountered error loading credentials file: %q", err)
 	}
 
 	replaceProfile(ctx, creds, template, profile)
-	if err := creds.SaveTo(credentialsFilePath); err != nil {
+	if err := creds.SaveTo(getCredentialsFilePath()); err != nil {
 		logger.Fatal().Msgf("Encountered error saving credentials: %q", err)
 	}
 }
