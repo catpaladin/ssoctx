@@ -72,13 +72,12 @@ Flags:
       --debug               toggle if you want to enable debug logs
   -h, --help                help for select
       --json                toggle if you want to enable json log output
-      --persist             toggle if you want to write short-lived creds to credentials file
+      --keys                toggle if you want to write access/secret keys to credentials file
       --print-creds         outputs the credentials to stdout and not modifying credentials file
   -p, --profile string      the profile name to set in credentials file (default "default")
   -r, --region string       set / override aws region
   -n, --role-name string    set with permission set role name
   -u, --start-url string    set / override aws sso url start url
-
 ```
 
 ## `refresh`
@@ -100,7 +99,7 @@ Flags:
       --debug               toggle if you want to enable debug logs
   -h, --help                help for refresh
       --json                toggle if you want to enable json log output
-      --persist             toggle if you want to write short-lived creds to credentials file
+      --keys                toggle if you want to write access/secret keys to credentials file
   -p, --profile string      the profile name to set in credentials file (default "default")
   -n, --role-name string    set with permission set role name
 ```
