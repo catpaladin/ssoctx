@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.0](https://github.com/catpaladin/ssoctx/compare/v0.4.4...v0.5.0) (2024-07-28)
+
+
+### Features
+
+* add install script ([12c34b7](https://github.com/catpaladin/ssoctx/commit/12c34b7bfd16599241530a8e9c91fc67a116f5b1))
+* remove prompt and fuzzy in favor of huh ([5e27957](https://github.com/catpaladin/ssoctx/commit/5e27957480b7cb536eab7bcf30c058d0ff7acbe4))
+
+
+### Bug Fixes
+
+* update dependencies and fix test ([af8ace9](https://github.com/catpaladin/ssoctx/commit/af8ace96f291e2f521f5795e0e2a5bf6707ff622))
+* update reference to select ([48e07b5](https://github.com/catpaladin/ssoctx/commit/48e07b591a234b1d2dfb24a1797c1ba959d7e294))
+
 ## [0.4.4](https://github.com/catpaladin/aws-sso-util/compare/v0.4.3...v0.4.4) (2023-09-30)
 
 
