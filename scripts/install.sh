@@ -62,13 +62,11 @@ CHECKSUMS_DOWNLOAD_URL=$(echo $METADATA | jq -r ". | select(.name | contains(\"c
 ARTIFACT_DOWNLOAD_URL=$(echo $METADATA | jq -r ". | select(.name | contains(\"${OS_TYPE}_${ARCH}\")) | {url} | .url")
 
 # download files
-curl -H "Authorization: token $GITHUB_TOKEN" \
-  -H 'Accept: application/octet-stream' \
+curl -H 'Accept: application/octet-stream' \
   -SL --progress-bar "$CHECKSUMS_DOWNLOAD_URL" \
   -o "$HASH_ARTIFACT"
 
-curl -H "Authorization: token $GITHUB_TOKEN" \
-  -H 'Accept: application/octet-stream' \
+curl -H 'Accept: application/octet-stream' \
   -SL --progress-bar "$ARTIFACT_DOWNLOAD_URL" \
   -o "$ARTIFACT"
 
