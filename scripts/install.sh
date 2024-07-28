@@ -22,7 +22,14 @@ case ${OS_TYPE} in
     ARCH="all"
     ;;
   linux)
-    ARCH=$(uname -m)
+    ARCH_CHECK=$(uname -m)
+    if [[ "$ARCH_CHECK" == "x86_64" ]]; then
+      ARCH="amd64"
+    elif [[ "$ARCH_CHECK" == "aarch64" ]]; then
+      ARCH="arm64"
+    else
+      printf >&2 '*** error: ARCH must be one of amd64|arm64'; exit 1
+    fi
     ;;
   *) printf >&2 '*** error: OS_TYPE must be one of darwin|linux'; exit 1;;
 esac
@@ -58,16 +65,14 @@ METADATA=$(\
   | jq -r ".assets[]")
 
 # get urls for checksums and artifact
-CHECKSUMS_DOWNLOAD_URL=$(echo $METADATA | jq -r ". | select(.name | contains(\"checksums.txt\")) | {url} | .url")
-ARTIFACT_DOWNLOAD_URL=$(echo $METADATA | jq -r ". | select(.name | contains(\"${OS_TYPE}_${ARCH}\")) | {url} | .url")
+CHECKSUMS_DOWNLOAD_URL=$(echo $METADATA | jq -r ". | select(.name | contains(\"checksums.txt\")) | {browser_download_url} | .browser_download_url")
+ARTIFACT_DOWNLOAD_URL=$(echo $METADATA | jq -r ". | select(.name | contains(\"${OS_TYPE}_${ARCH}\")) | {browser_download_url} | .browser_download_url")
 
 # download files
-curl -H 'Accept: application/octet-stream' \
-  -SL --progress-bar "$CHECKSUMS_DOWNLOAD_URL" \
+curl -SfL --progress-bar "$CHECKSUMS_DOWNLOAD_URL" \
   -o "$HASH_ARTIFACT"
 
-curl -H 'Accept: application/octet-stream' \
-  -SL --progress-bar "$ARTIFACT_DOWNLOAD_URL" \
+curl -SfL --progress-bar "$ARTIFACT_DOWNLOAD_URL" \
   -o "$ARTIFACT"
 
 # determine if sha356sum or shasum on host
