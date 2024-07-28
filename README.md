@@ -8,6 +8,10 @@ Easily set and change AWS SSO context.
 
 ## linux / macOS
 
+```
+curl -L https://raw.githubusercontent.com/catpaladin/ssoctx/main/scripts/install.sh | bash
+```
+
 ## go
 requires go v1.22+
 
